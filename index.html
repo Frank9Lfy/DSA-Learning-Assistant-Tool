@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据结构与算法 · 智能复习平台</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mistakes.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <!-- CodeMirror CDN for code editor -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/dracula.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.min.css">
+</head>
+<body>
+  <!-- App Shell -->
+  <div id="app" class="app">
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">
+          <span class="logo-icon">📊</span>
+          <span class="logo-text">DSA Review</span>
+        </h1>
+        <button id="sidebar-toggle" class="btn-icon sidebar-toggle" title="收起侧边栏">✕</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#/knowledge" class="nav-item" data-route="knowledge">
+          <span class="nav-icon">📖</span>
+          <span class="nav-label">知识检索</span>
+        </a>
+        <a href="#/teaching" class="nav-item" data-route="teaching">
+          <span class="nav-icon">🎓</span>
+          <span class="nav-label">交互教学</span>
+        </a>
+        <a href="#/visualization" class="nav-item" data-route="visualization">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label">算法可视化</span>
+        </a>
+        <a href="#/code-judge" class="nav-item" data-route="code-judge">
+          <span class="nav-icon">💻</span>
+          <span class="nav-label">代码评判</span>
+        </a>
+        <a href="#/quiz" class="nav-item" data-route="quiz">
+          <span class="nav-icon">📝</span>
+          <span class="nav-label">练习测验</span>
+        </a>
+        <a href="#/mistakes" class="nav-item" data-route="mistakes">
+          <span class="nav-icon">📕</span>
+          <span class="nav-label">错题本</span>
+        </a>
+        <a href="#/ai-chat" class="nav-item" data-route="ai-chat">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-label">AI 助教</span>
+        </a>
+        <a href="#/resources" class="nav-item" data-route="resources">
+          <span class="nav-icon">🔗</span>
+          <span class="nav-label">拓展资源</span>
+        </a>
+        <a href="#/settings" class="nav-item" data-route="settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">设置与存档</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="theme-toggle" class="btn-icon theme-toggle" title="切换主题">🌙</button>
+        <span class="version">v1.5.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <button id="menu-btn" class="btn-icon menu-btn" title="菜单">☰</button>
+        <div class="search-box">
+          <input type="text" id="global-search" placeholder="搜索知识点、算法、概念..." autocomplete="off">
+          <div id="search-results" class="search-dropdown"></div>
+        </div>
+        <div class="top-bar-actions">
+          <span id="breadcrumb" class="breadcrumb"></span>
+        </div>
+      </header>
+
+      <!-- Route Views -->
+      <div id="view-container" class="view-container">
+        <!-- Knowledge Module -->
+        <section id="view-knowledge" class="view" data-view="knowledge">
+          <div class="view-header">
+            <h2>📖 知识检索</h2>
+            <p class="view-desc">浏览章节知识体系，搜索概念与定义</p>
+          </div>
+          <div class="knowledge-layout">
+            <div id="chapter-tree" class="chapter-tree"></div>
+            <div id="knowledge-detail" class="knowledge-detail">
+              <div class="welcome-card">
+                <h3>欢迎来到数据结构与算法复习平台</h3>
+                <p>从左侧选择一个章节开始学习，或使用顶部搜索框查找特定知识点。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Teaching Module -->
+        <section id="view-teaching" class="view" data-view="teaching">
+          <div class="view-header">
+            <h2>🎓 交互式教学</h2>
+            <p class="view-desc">逐步学习算法原理，配合代码走读理解实现细节</p>
+          </div>
+          <div class="teaching-layout">
+            <div id="lesson-selector" class="lesson-selector"></div>
+            <div id="lesson-player" class="lesson-player">
+              <div class="welcome-card">
+                <h3>选择一节课程开始学习</h3>
+                <p>每个课程包含分步骤的讲解、代码示例和动画演示。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Visualization Module -->
+        <section id="view-visualization" class="view" data-view="visualization">
+          <div class="view-header">
+            <h2>📈 算法可视化</h2>
+            <p class="view-desc">通过动画直观理解数据结构和算法的执行过程</p>
+          </div>
+          <div class="viz-layout">
+            <div id="viz-controls" class="viz-controls">
+              <div class="viz-algo-select">
+                <label>选择算法：</label>
+                <select id="viz-algo-selector">
+                  <optgroup label="排序算法">
+                    <option value="bubble-sort">冒泡排序</option>
+                    <option value="selection-sort">选择排序</option>
+                    <option value="insertion-sort">插入排序</option>
+                    <option value="merge-sort">归并排序</option>
+                    <option value="quick-sort">快速排序</option>
+                    <option value="heap-sort">堆排序</option>
+                  </optgroup>
+                  <optgroup label="线性表操作">
+                    <option value="list-insert">链表插入</option>
+                    <option value="list-delete">链表删除</option>
+                    <option value="list-reverse">链表反转</option>
+                  </optgroup>
+                  <optgroup label="树操作">
+                    <option value="bst-insert">BST 插入</option>
+                    <option value="bst-delete">BST 删除</option>
+                    <option value="bst-traverse">BST 遍历</option>
+                  </optgroup>
+                  <optgroup label="图算法">
+                    <option value="graph-bfs">广度优先搜索</option>
+                    <option value="graph-dfs">深度优先搜索</option>
+                    <option value="graph-dijkstra">Dijkstra 最短路径</option>
+                  </optgroup>
+                  <optgroup label="查找算法">
+                    <option value="linear-search">线性查找</option>
+                    <option value="binary-search">二分查找</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="viz-data-controls">
+                <label>数据规模：</label>
+                <input type="range" id="viz-size" min="4" max="30" value="10">
+                <span id="viz-size-label">10</span>
+                <button id="viz-random" class="btn btn-sm">随机生成</button>
+                <button id="viz-custom" class="btn btn-sm">自定义</button>
+              </div>
+              <div class="viz-playback">
+                <button id="viz-prev" class="btn-icon" title="上一步">⏮</button>
+                <button id="viz-play" class="btn-icon btn-play" title="播放/暂停">▶</button>
+                <button id="viz-next" class="btn-icon" title="下一步">⏭</button>
+                <button id="viz-reset" class="btn-icon" title="重置">🔄</button>
+                <label>速度：</label>
+                <input type="range" id="viz-speed" min="0.25" max="3" step="0.25" value="1">
+                <span id="viz-speed-label">1x</span>
+              </div>
+              <div id="viz-info" class="viz-info">
+                <span>比较次数: <b id="viz-comparisons">0</b></span>
+                <span>交换次数: <b id="viz-swaps">0</b></span>
+                <span>步骤: <b id="viz-step-count">0</b></span>
+              </div>
+            </div>
+            <div class="viz-canvas-wrap">
+              <canvas id="viz-canvas"></canvas>
+              <div id="viz-description" class="viz-description"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Code Judge Module -->
+        <section id="view-code-judge" class="view" data-view="code-judge">
+          <div class="view-header">
+            <h2>💻 代码测试与评判</h2>
+            <p class="view-desc">编写C++代码，运行测试用例，自动评判结果</p>
+          </div>
+          <div class="judge-layout">
+            <div class="judge-editor-panel">
+              <div class="judge-toolbar">
+                <select id="judge-problem" class="problem-select">
+                  <option value="">-- 选择题目 --</option>
+                </select>
+                <button id="judge-templates" class="btn" title="打开模板库：全部数据结构模板分类浏览、搜索、一键使用">📚 模板库</button>
+                <button id="judge-run" class="btn btn-primary">▶ 运行</button>
+                <button id="judge-submit" class="btn btn-success">✓ 提交评测</button>
+              </div>
+              <div id="judge-editor" class="code-editor-container"></div>
+              <div class="judge-input-panel">
+                <label>标准输入 (stdin)：</label>
+                <textarea id="judge-stdin" rows="3" placeholder="输入测试数据..."></textarea>
+              </div>
+            </div>
+            <div class="judge-result-panel">
+              <div id="judge-output" class="judge-output">
+                <div class="welcome-card">
+                  <h3>编写代码并点击运行</h3>
+                  <p>支持C++17编译执行（通过Piston API）。选择题目可自动加载测试用例。</p>
+                </div>
+              </div>
+              <div id="judge-test-results" class="judge-test-results"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Quiz Module -->
+        <section id="view-quiz" class="view" data-view="quiz">
+          <div class="view-header">
+            <h2>📝 练习测验</h2>
+            <p class="view-desc">检验学习成果，巩固知识点</p>
+          </div>
+          <div id="quiz-container" class="quiz-container">
+            <div class="quiz-setup">
+              <h3>开始测验</h3>
+              <div class="quiz-options">
+                <div class="quiz-option-group">
+                  <label>章节范围：</label>
+                  <select id="quiz-chapter">
+                    <option value="all">全部章节</option>
+                  </select>
+                </div>
+                <div class="quiz-option-group">
+                  <label>题目数量：</label>
+                  <select id="quiz-count">
+                    <option value="5">5 题</option>
+                    <option value="10" selected>10 题</option>
+                    <option value="20">20 题</option>
+                  </select>
+                </div>
+                <div class="quiz-option-group">
+                  <label>难度：</label>
+                  <select id="quiz-difficulty">
+                    <option value="all">全部</option>
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                  </select>
+                </div>
+                <button id="quiz-start" class="btn btn-primary btn-lg">开始测验</button>
+              </div>
+            </div>
+            <div id="quiz-active" class="quiz-active" style="display:none"></div>
+            <div id="quiz-result" class="quiz-result" style="display:none"></div>
+          </div>
+        </section>
+
+        <!-- Mistakes Book Module -->
+        <section id="view-mistakes" class="view" data-view="mistakes">
+          <div class="view-header">
+            <h2>📕 错题本</h2>
+            <p class="view-desc">自动收藏答错的题目，支持重做、重练、导入与导出</p>
+          </div>
+          <div id="mistakes-container" class="mistakes-container">
+            <div class="welcome-card">
+              <h3>📕 错题本</h3>
+              <p>在「练习测验」中答错的题目会自动收进这里，可逐题重做、批量重练，也支持手动导入/导出。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Chat Module -->
+        <section id="view-ai-chat" class="view" data-view="ai-chat">
+          <div class="view-header">
+            <h2>🤖 AI 助教</h2>
+            <p class="view-desc">向AI助教提问数据结构和算法相关问题</p>
+          </div>
+          <div class="chat-layout">
+            <div id="chat-messages" class="chat-messages">
+              <div class="chat-message assistant">
+                <div class="chat-avatar">🤖</div>
+                <div class="chat-bubble">
+                  <p>你好！我是你的数据结构与算法AI助教。你可以问我任何关于课程内容的问题，比如：</p>
+                  <ul>
+                    <li>什么是时间复杂度？</li>
+                    <li>快速排序的原理是什么？</li>
+                    <li>二叉搜索树怎么删除节点？</li>
+                  </ul>
+                  <p><em>注：当前使用规则引擎模拟回答，后续可接入LLM API实现真正的AI对话。</em></p>
+                </div>
+              </div>
+            </div>
+            <div class="chat-input-area">
+              <div class="chat-suggestions" id="chat-suggestions"></div>
+              <div class="chat-input-row">
+                <textarea id="chat-input" placeholder="输入你的问题..." rows="1"></textarea>
+                <button id="chat-send" class="btn btn-primary">发送</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Resources Module -->
+        <section id="view-resources" class="view" data-view="resources">
+          <div class="view-header">
+            <h2>🔗 拓展资源</h2>
+            <p class="view-desc">精选学习资源、参考书目和在线工具</p>
+          </div>
+          <div id="resources-container" class="resources-container"></div>
+        </section>
+
+        <!-- Settings / Archive Module -->
+        <section id="view-settings" class="view" data-view="settings">
+          <div class="view-header">
+            <h2>⚙️ 设置与存档</h2>
+            <p class="view-desc">自动存档、多份手动存档、启动恢复与数据管理</p>
+          </div>
+          <div id="settings-container" class="settings-container"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Overlay -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none">
+    <div id="modal" class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title"></h3>
+        <button class="btn-icon modal-close" onclick="App.closeModal()">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- CodeMirror JS -->
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/anyword-hint.min.js"></script>
+
+  <!-- App Scripts (order matters) -->
+  <script src="js/utils/constants.js"></script>
+  <script src="js/utils/dom.js"></script>
+  <script src="js/core/eventBus.js"></script>
+  <script src="js/core/storage.js"></script>
+  <script src="js/core/archive.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/core/router.js"></script>
+
+  <!-- Data -->
+  <script src="data/chapters.js"></script>
+  <script src="data/knowledge.js"></script>
+  <script src="data/codeExamples.js"></script>
+  <script src="data/templates.js"></script>
+  <script src="data/questions.js"></script>
+  <script src="data/resources.js"></script>
+
+  <!-- Modules -->
+  <script src="js/modules/knowledge/searchEngine.js"></script>
+  <script src="js/modules/knowledge/knowledgeView.js"></script>
+  <script src="js/modules/knowledge/index.js"></script>
+
+  <script src="js/modules/visualization/renderer.js"></script>
+  <script src="js/modules/visualization/animator.js"></script>
+  <script src="js/modules/visualization/algorithms/sortViz.js"></script>
+  <script src="js/modules/visualization/algorithms/listViz.js"></script>
+  <script src="js/modules/visualization/algorithms/treeViz.js"></script>
+  <script src="js/modules/visualization/algorithms/graphViz.js"></script>
+  <script src="js/modules/visualization/algorithms/searchViz.js"></script>
+  <script src="js/modules/visualization/algorithms/courseViz.js"></script>
+  <script src="js/modules/visualization/vizView.js"></script>
+  <script src="js/modules/visualization/index.js"></script>
+
+  <script src="js/modules/codeJudge/editor.js"></script>
+  <script src="js/modules/codeJudge/executor.js"></script>
+  <script src="js/modules/codeJudge/judge.js"></script>
+  <script src="js/modules/codeJudge/judgeView.js"></script>
+  <script src="js/modules/codeJudge/index.js"></script>
+
+  <!-- Teaching: 数据文件在前，逻辑文件在后 -->
+  <script src="js/modules/teaching/lessons-data-1.js"></script>
+  <script src="js/modules/teaching/lessons-data-2.js"></script>
+  <script src="js/modules/teaching/lessonPlayer.js"></script>
+  <script src="js/modules/teaching/codeWalkthrough.js"></script>
+  <script src="js/modules/teaching/teachView.js"></script>
+  <script src="js/modules/teaching/index.js"></script>
+
+  <script src="js/modules/quiz/quizEngine.js"></script>
+  <script src="js/modules/quiz/quizView.js"></script>
+  <script src="js/modules/quiz/index.js"></script>
+
+  <script src="js/modules/mistakes/mistakeEngine.js"></script>
+  <script src="js/modules/mistakes/mistakesView.js"></script>
+  <script src="js/modules/mistakes/index.js"></script>
+
+  <script src="js/modules/aiChat/ruleEngine.js"></script>
+  <script src="js/modules/aiChat/chatView.js"></script>
+  <script src="js/modules/aiChat/index.js"></script>
+
+  <script src="js/modules/resources/resourceView.js"></script>
+  <script src="js/modules/resources/index.js"></script>
+
+  <!-- Settings & Archive -->
+  <script src="js/modules/settings/settingsView.js"></script>
+
+  <!-- App Entry -->
+  <script src="js/app.js"></script>
+</body>
+</html>

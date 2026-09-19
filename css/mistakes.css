@@ -1,0 +1,49 @@
+/* ========================================
+   mistakes.css - 错题本板块专用样式
+   前缀 .mbook-，全部使用主题 CSS 变量，兼容暗色主题
+   ======================================== */
+
+/* 章节筛选 chips */
+.mbook-chip {
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.mbook-chip:hover {
+  opacity: 0.85;
+}
+.mbook-chip-active {
+  background: var(--accent-primary) !important;
+  color: #fff !important;
+}
+
+/* 题目选项行 */
+.mbook-opt {
+  padding: 9px 14px;
+  border-radius: 8px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  transition: background 0.15s;
+}
+.mbook-opt[onclick]:hover {
+  background: var(--bg-hover) !important;
+}
+
+/* 列表项悬停微弱提示 */
+.mbook-item {
+  transition: box-shadow 0.15s;
+}
+.mbook-item:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* 空状态 */
+.mbook-empty {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+/* 导入文本域聚焦 */
+.mbook-textarea:focus {
+  outline: 2px solid var(--accent-primary);
+}
