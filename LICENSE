@@ -20,9 +20,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
+Scope of this license:
 
-Additional note: The course-derived study content (knowledge notes, question
-bank, code problems) is based on lecture materials of the "Data Structures
-and Algorithms" course and is provided for personal learning and teaching
-reference only.
+This MIT License applies only to the original source code created by
+Frank9Lfy.
+
+It does not apply to course-derived study content, including knowledge
+notes, question banks, and code problems, or to any third-party materials.
+The rights to such materials remain with their respective copyright
+holders.
