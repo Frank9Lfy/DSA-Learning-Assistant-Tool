@@ -5,35 +5,52 @@
 /* CSS Custom Properties (Theme System) */
 :root {
   /* Colors - Light Theme */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
-  --bg-sidebar: #1a1a2e;
+  --bg-primary: #f7f8fc;
+  --bg-secondary: #eef0f8;
+  --bg-tertiary: #e4e7f2;
+  --bg-sidebar: linear-gradient(180deg, #171b34 0%, #1c1a3e 55%, #251d52 100%);
   --bg-card: #ffffff;
-  --bg-hover: #f0f0f0;
-  --bg-active: #e3f2fd;
-  --bg-code: #282a36;
+  --bg-hover: #f0f1fa;
+  --bg-active: #eef0ff;
+  --bg-code: #1e1e2e;
 
-  --text-primary: #212529;
-  --text-secondary: #6c757d;
-  --text-tertiary: #adb5bd;
-  --text-sidebar: #e0e0e0;
-  --text-code: #f8f8f2;
-  --text-link: #1976d2;
+  --text-primary: #1d2233;
+  --text-secondary: #5f6579;
+  --text-tertiary: #a3a8bd;
+  --text-sidebar: #c8cbe4;
+  --text-code: #e5e9f0;
+  --text-link: #4f46e5;
 
-  --accent-primary: #1976d2;
-  --accent-secondary: #7c4dff;
-  --accent-success: #2e7d32;
-  --accent-warning: #f57c00;
-  --accent-danger: #d32f2f;
-  --accent-info: #0288d1;
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+  --accent-primary-soft: rgba(79, 70, 229, 0.10);
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #7c5cf6 55%, #9d5cf6 100%);
+  --accent-secondary: #7c3aed;
+  --accent-success: #16a34a;
+  --accent-warning: #f59e0b;
+  --accent-danger: #dc2626;
+  --accent-info: #0284c7;
 
-  --border-light: #e0e0e0;
-  --border-medium: #bdbdbd;
+  --border-light: #e5e7f2;
+  --border-medium: #c9cde0;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-sm: 0 1px 2px rgba(28, 30, 60, 0.05), 0 1px 6px rgba(28, 30, 60, 0.04);
+  --shadow-md: 0 4px 10px rgba(28, 30, 60, 0.06), 0 10px 28px rgba(28, 30, 60, 0.08);
+  --shadow-lg: 0 12px 24px rgba(28, 30, 60, 0.10), 0 24px 56px rgba(28, 30, 60, 0.12);
+  --shadow-glow: 0 4px 14px rgba(99, 102, 241, 0.35);
+
+  /* Glass top bar */
+  --topbar-bg: rgba(247, 248, 252, 0.82);
+
+  /* judge.css 等模块使用的别名（补齐缺失变量，保证暗色主题下也正确） */
+  --body-bg: var(--bg-primary);
+  --card-bg: var(--bg-card);
+  --border-color: var(--border-light);
+  --hover-bg: var(--bg-hover);
+  --text-muted: var(--text-tertiary);
+  --stat-bg: var(--bg-secondary);
+  --info-bg: rgba(2, 132, 199, 0.10);
+  --info-color: #0369a1;
 
   /* Spacing */
   --space-xs: 4px;
@@ -44,8 +61,8 @@
   --space-xxl: 48px;
 
   /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -58,11 +75,11 @@
 
   /* Layout */
   --sidebar-width: 240px;
-  --sidebar-collapsed: 60px;
+  --sidebar-collapsed: 64px;
   --topbar-height: 56px;
-  --border-radius: 8px;
-  --border-radius-sm: 4px;
-  --border-radius-lg: 12px;
+  --border-radius: 10px;
+  --border-radius-sm: 6px;
+  --border-radius-lg: 14px;
 
   /* Transitions */
   --transition-fast: 150ms ease;
@@ -72,26 +89,42 @@
 
 /* Dark Theme */
 [data-theme="dark"] {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #2d2d2d;
-  --bg-sidebar: #0d0d1a;
-  --bg-card: #1e1e1e;
-  --bg-hover: #2d2d2d;
-  --bg-active: #1a3a5c;
+  --bg-primary: #101122;
+  --bg-secondary: #171831;
+  --bg-tertiary: #22243f;
+  --bg-sidebar: linear-gradient(180deg, #0c0d1e 0%, #12102a 55%, #191336 100%);
+  --bg-card: #191a33;
+  --bg-hover: #22243f;
+  --bg-active: #232552;
 
-  --text-primary: #e0e0e0;
-  --text-secondary: #9e9e9e;
-  --text-tertiary: #616161;
-  --text-sidebar: #b0b0b0;
-  --text-link: #64b5f6;
+  --text-primary: #e6e8f5;
+  --text-secondary: #9fa3bd;
+  --text-tertiary: #62678a;
+  --text-sidebar: #b6bad8;
+  --text-link: #a5b4fc;
 
-  --border-light: #333333;
-  --border-medium: #444444;
+  --accent-primary: #818cf8;
+  --accent-primary-hover: #a5b4fc;
+  --accent-primary-soft: rgba(129, 140, 248, 0.14);
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #7c5cf6 55%, #9d5cf6 100%);
+  --accent-secondary: #a78bfa;
+  --accent-success: #4ade80;
+  --accent-warning: #fbbf24;
+  --accent-danger: #f87171;
+  --accent-info: #38bdf8;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --border-light: #2b2d4d;
+  --border-medium: #3d3f66;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 6px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.4), 0 24px 56px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 4px 16px rgba(99, 102, 241, 0.45);
+
+  --topbar-bg: rgba(16, 17, 34, 0.82);
+
+  --info-bg: rgba(56, 189, 248, 0.12);
+  --info-color: #7dd3fc;
 }
 
 /* Reset & Base */
@@ -112,6 +145,8 @@ body {
   line-height: var(--line-height);
   color: var(--text-primary);
   background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow: hidden;
   height: 100vh;
 }
@@ -184,8 +219,8 @@ th {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -194,17 +229,21 @@ th {
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-medium);
-  border-radius: 3px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-tertiary);
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 /* Selection */
 ::selection {
-  background: var(--accent-primary);
-  color: white;
+  background: rgba(99, 102, 241, 0.28);
+  color: inherit;
 }
 
 /* Focus visible */
@@ -235,3 +274,14 @@ th {
 .gap-1 { gap: var(--space-sm); }
 .gap-2 { gap: var(--space-md); }
 .hidden { display: none !important; }
+
+/* View enter animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+}

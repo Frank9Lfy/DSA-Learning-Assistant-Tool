@@ -521,15 +521,15 @@ C: 空       C: 空       C: 盘n      C: 盘1~n  ✓</pre>`,
         title: 'n = 3 的完整移动序列',
         content: `<p>展开递归，7 次移动依次是：</p>
           <pre><code>Hanoi(3,A,B,C)
- ├─ Hanoi(2,A,C,B)
- │   ├─ Hanoi(1,A,C,B): A→C   ①
+ ├─ Hanoi(2,A,C,B)            （2 个盘：A→B，借助 C）
+ │   ├─ Hanoi(1,A,B,C): A→C   ①
  │   ├─ A→B                   ②
- │   └─ Hanoi(1,B,A,C): B→C   ③
+ │   └─ Hanoi(1,C,A,B): C→B   ③
  ├─ A→C                       ④   （最大盘就位）
- └─ Hanoi(2,B,A,C)
-     ├─ Hanoi(1,B,A,C): B→A   ⑤
+ └─ Hanoi(2,B,A,C)            （2 个盘：B→C，借助 A）
+     ├─ Hanoi(1,B,C,A): B→A   ⑤
      ├─ B→C                   ⑥
-     └─ Hanoi(1,A,C,B): A→C   ⑦</code></pre>
+     └─ Hanoi(1,A,B,C): A→C   ⑦</code></pre>
           <p>即 <b>A→C, A→B, C→B, A→C, B→A, B→C, A→C</b>，共 7 步。</p>`,
         html: `<pre class="lesson-tree">步0:  A:[1,2,3]  B:[]      C:[]
 步4:  A:[]        B:[1,2]   C:[3]     ← 最大盘3已在C

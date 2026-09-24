@@ -10,6 +10,7 @@ const QuizView = (() => {
   let userAnswers = {};
   let timerInterval = null;
   let timeRemaining = 0;
+  let timerDeadline = 0;   // 绝对截止时间戳：后台标签页定时器被浏览器节流时仍保持计时准确
   let currentChapterId = 'all';   // 'all' = comprehensive test
   let quizSource = 'normal';      // 'normal' | 'mistakes'（错题重练）
   let pendingCustomQuiz = null;   // 从错题本跳转来时暂存的题目
@@ -332,7 +333,7 @@ const QuizView = (() => {
             <span class="tag tag-${question.difficulty}">
               ${difficultyLabel(question.difficulty)}
             </span>
-            ${question.type === 'code-output' ? '<span class="tag" style="background:#e3f2fd;color:#1565c0">代码题</span>' : ''}
+            ${question.type === 'code-output' ? '<span class="tag badge-time">代码题</span>' : ''}
           </div>
 
           <div class="quiz-question-text" style="font-size:1.1em;line-height:1.6;margin-bottom:20px;white-space:pre-wrap">${DOM.escapeHtml(question.question)}</div>
@@ -621,24 +622,35 @@ const QuizView = (() => {
    * Start timer.
    * When time hits 0, stop the timer first and submit silently
    * (finishQuiz is guarded against repeated invocation anyway).
+   *
+   * 计时以「截止时间戳」倒推，而不是每秒 timeRemaining--：
+   * 后台标签页的 setInterval 会被浏览器节流甚至暂停，切走再切回后
+   * 按次递减的计时几乎没走、与真实用时脱节；时间戳基准不受节流影响。
    */
   function startTimer() {
     stopTimer();
-    timerInterval = setInterval(() => {
-      timeRemaining--;
-      const timerEl = DOM.$('.quiz-timer');
-      if (timerEl) {
-        timerEl.textContent = `⏱️ ${formatTime(Math.max(0, timeRemaining))}`;
-        if (timeRemaining <= 30) {
-          timerEl.style.color = 'var(--accent-danger)';
-        }
+    timerDeadline = Date.now() + timeRemaining * 1000;
+    timerInterval = setInterval(tickTimer, 1000);
+    tickTimer();   // 立即渲染，避免 1s 空档
+  }
+
+  /**
+   * Timer tick: recompute remaining seconds from the deadline.
+   */
+  function tickTimer() {
+    timeRemaining = Math.max(0, Math.round((timerDeadline - Date.now()) / 1000));
+    const timerEl = DOM.$('.quiz-timer');
+    if (timerEl) {
+      timerEl.textContent = `⏱️ ${formatTime(timeRemaining)}`;
+      if (timeRemaining <= 30) {
+        timerEl.style.color = 'var(--accent-danger)';
       }
-      if (timeRemaining <= 0) {
-        stopTimer();
-        DOM.toast('时间到！已自动提交测验', 'warning');
-        finishQuiz(true); // silent: no confirm dialog on timeout
-      }
-    }, 1000);
+    }
+    if (timeRemaining <= 0) {
+      stopTimer();
+      DOM.toast('时间到！已自动提交测验', 'warning');
+      finishQuiz(true); // silent: no confirm dialog on timeout
+    }
   }
 
   /**
@@ -675,6 +687,11 @@ const QuizView = (() => {
         // Auto-start quiz for this chapter
         setTimeout(() => startChapterQuiz(chapterId), 100);
       }
+    });
+    // 标签页切回时立即校准倒计时显示（后台被节流的定时器此刻才恢复，
+    // 时间戳基准保证数值正确，这里只是让显示即刻刷新而非等下一次 tick）
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && timerInterval) tickTimer();
     });
   }
 

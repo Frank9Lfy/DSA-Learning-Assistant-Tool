@@ -197,7 +197,7 @@ const App = (() => {
      * Get app version
      */
     version() {
-      return '1.0.0';
+      return '1.7.0';
     }
   };
 })();

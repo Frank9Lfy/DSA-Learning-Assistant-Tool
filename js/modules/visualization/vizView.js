@@ -35,6 +35,9 @@
         currentTriples: null,   // 快速转置输入 {rows, cols, triples}
         comparisonCount: 0,
         swapCount: 0,
+        _initialized: false,    // init 重入守卫（Router 每次进入路由都会调用 init）
+        _restoring: false,      // 状态恢复中标记（loadAlgorithm 跳过数据再生）
+        _rawSteps: null,        // 原始步骤元数据（供 onStep 计数与状态恢复）
 
         // Algorithm registry
         algorithms: {
@@ -132,8 +135,19 @@
 
         /**
          * Initialize the visualization view
+         *
+         * 重入安全：Router 每次进入可视化路由都会调用 init()。首次执行完整初始化；
+         * 之后重入只做画布重绘——此前无守卫，每次切走再切回都会重建 renderer/animator
+         * （播放进度作废、数据重新随机、事件重复绑定导致一次点击跳多步）。
          */
         init() {
+            if (this._initialized) {
+                // 从其他板块切回：画布可能在隐藏期间被 resize 清空，重绘当前步骤
+                this._redrawCurrentStep();
+                return;
+            }
+            this._initialized = true;
+
             // Create renderer
             this.renderer = new VizRenderer();
             const canvas = document.getElementById('viz-canvas');
@@ -145,8 +159,18 @@
             this.animator = new Animator();
 
             // Setup animator callbacks
-            this.animator.onStep((stepIndex, step) => {
-                this._updateUI(stepIndex, step);
+            // 计数在这里做（而不是渲染闭包里）：重绘只执行渲染闭包、不经过
+            // onStep，因此 resize/切页后的重绘不会重复累加比较/交换次数。
+            // _restoring 期间的 runStep 是"跳回已计过数的画面"，同样不计数。
+            this.animator.onStep((stepIndex) => {
+                const meta = this._rawSteps ? this._rawSteps[stepIndex] : null;
+                if (!this._restoring && meta) {
+                    if (meta.type === 'compare') this.comparisonCount++;
+                    if (meta.type === 'swap') this.swapCount++;
+                }
+                this._updateCounters();
+                this._updateUI(stepIndex, meta);
+                this._saveVizState();
             });
 
             this.animator.onComplete(() => {
@@ -162,13 +186,32 @@
             // 注入配色图例
             this._injectLegend();
 
-            // Generate initial data
-            this.generateData();
+            // 窗口尺寸变化 / 浏览器标签页切回时重绘画布：
+            // canvas.width 赋值（renderer.resize）会清空画布，必须补一次当前步骤的绘制
+            window.addEventListener('resize', DOM.debounce(() => this._redrawCurrentStep(), 150));
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // 后台 rAF 完全暂停：恢复播放前重置时间基准，避免回来瞬间快进多步
+                    if (this.animator && this.animator.isPlaying) {
+                        this.animator.pause();
+                        this.animator.play();
+                    }
+                    this._redrawCurrentStep();
+                }
+            });
 
-            // Load first algorithm
-            const selector = document.getElementById('viz-algo-selector');
-            if (selector && selector.value) {
-                this.loadAlgorithm(selector.value);
+            // 恢复上次会话的可视化状态（算法 / 速度 / 数据 / 步骤位置）
+            const restored = this._restoreVizState();
+
+            if (!restored) {
+                // Generate initial data
+                this.generateData();
+
+                // Load first algorithm
+                const selector = document.getElementById('viz-algo-selector');
+                if (selector && selector.value) {
+                    this.loadAlgorithm(selector.value);
+                }
             }
 
             // Update labels
@@ -264,6 +307,7 @@
                     const speed = parseFloat(e.target.value);
                     this.animator.setSpeed(speed);
                     this._updateLabels();
+                    this._saveVizState();
                 });
             }
         },
@@ -287,8 +331,11 @@
 
             // 按算法类别应用滑杆量程；
             // 切换到新类别时也必须重新生成数据（各类别的专属数据互不通用：
-            // 表达式 / 汉诺塔层数 / KMP 串 / 散列表长等都是 generateData 按滑杆生成的）
-            if (this._applySliderSpec() || prevCategory !== algo.category) {
+            // 表达式 / 汉诺塔层数 / KMP 串 / 散列表长等都是 generateData 按滑杆生成的）。
+            // 状态恢复路径（_restoring）跳过数据再生——数据已从存档恢复，
+            // 重新随机会导致步骤序列与保存的步骤位置对不上。
+            const clamped = this._applySliderSpec();
+            if (!this._restoring && (clamped || prevCategory !== algo.category)) {
                 this.generateData();
             }
 
@@ -308,7 +355,12 @@
                     case 'list':
                         if (algo.fn === 'listInsert') {
                             const pos = Math.floor(this.currentData.length / 2);
-                            rawSteps = ListViz.listInsert(this.currentData, pos, Math.floor(Math.random() * 50) + 10);
+                            // 插入值是随机参数：首次生成后保存，状态恢复时复用同一值，
+                            // 保证"数据一致 ⇒ 步骤序列一致"
+                            if (this.currentListVal == null) {
+                                this.currentListVal = Math.floor(Math.random() * 50) + 10;
+                            }
+                            rawSteps = ListViz.listInsert(this.currentData, pos, this.currentListVal);
                         } else if (algo.fn === 'listDelete') {
                             const pos = Math.min(Math.floor(this.currentData.length / 2), this.currentData.length - 1);
                             rawSteps = ListViz.listDelete(this.currentData, pos);
@@ -341,7 +393,11 @@
                     }
                     case 'search': {
                         const sortedData = this.currentData.slice().sort((a, b) => a - b);
-                        const target = sortedData[Math.floor(Math.random() * sortedData.length)];
+                        // 查找目标是随机参数：保存以支持状态恢复复现同一序列
+                        if (this.currentSearchTarget == null || sortedData.indexOf(this.currentSearchTarget) === -1) {
+                            this.currentSearchTarget = sortedData[Math.floor(Math.random() * sortedData.length)];
+                        }
+                        const target = this.currentSearchTarget;
                         if (this.currentData.join(',') !== sortedData.join(',')) {
                             DOM.toast('查找演示要求数据有序，已自动排序', 'info');
                         }
@@ -357,9 +413,14 @@
                     case 'seqlist': {
                         const a = this.currentData.slice(0, 12);
                         const pos = Math.max(0, Math.floor(a.length / 2) - (algo.fn === 'arrayDelete' ? 0 : 0));
-                        rawSteps = algo.fn === 'arrayInsert'
-                            ? CourseViz.arrayInsert(a, Math.min(pos, a.length - 1), Math.floor(Math.random() * 90) + 10)
-                            : CourseViz.arrayDelete(a, Math.min(pos, a.length - 1));
+                        if (algo.fn === 'arrayInsert') {
+                            if (this.currentSeqVal == null) {
+                                this.currentSeqVal = Math.floor(Math.random() * 90) + 10;
+                            }
+                            rawSteps = CourseViz.arrayInsert(a, Math.min(pos, a.length - 1), this.currentSeqVal);
+                        } else {
+                            rawSteps = CourseViz.arrayDelete(a, Math.min(pos, a.length - 1));
+                        }
                         break;
                     }
                     case 'queue':
@@ -437,30 +498,161 @@
                 this.animator.currentStep = 0;
                 this.animator.runStep();
             }
+
+            // 持久化本次算法状态（供刷新/重开后恢复）
+            this._saveVizState();
         },
 
         /**
          * Convert raw algorithm steps into animator steps with render functions
+         * 步骤闭包只负责绘制；比较/交换计数在 animator.onStep 回调中做——
+         * 这样 _redrawCurrentStep 重绘时不经过 onStep，不会重复累加计数
          * @param {Array} rawSteps - Steps from algorithm module
          * @private
          */
         _buildAnimatorSteps(rawSteps) {
             this.animator.clear();
+            this._rawSteps = rawSteps;
 
             for (let i = 0; i < rawSteps.length; i++) {
                 const step = rawSteps[i];
-                const stepIndex = i;
                 const self = this;
 
                 this.animator.addStep(() => {
                     self.render(step);
-
-                    // Track comparisons and swaps
-                    if (step.type === 'compare') self.comparisonCount++;
-                    if (step.type === 'swap') self.swapCount++;
-                    self._updateCounters();
                 }, step.description);
             }
+        },
+
+        /**
+         * 重绘当前步骤（不清计数、不改播放状态）。
+         * 触发场景：window resize（canvas.width 赋值会清空画布）、浏览器标签页
+         * 切回、从其他板块切回本板块。不可见或尺寸异常时跳过。
+         * @private
+         */
+        _redrawCurrentStep() {
+            if (!this.renderer || !this.animator) return;
+            const view = document.getElementById('view-visualization');
+            if (!view || !view.classList.contains('active')) return;   // 隐藏时布局为 0，切回时 init 会重绘
+            const rect = this.renderer.canvas ? this.renderer.canvas.parentElement.getBoundingClientRect() : null;
+            if (!rect || rect.width < 10 || rect.height < 10) return;  // 最小化/过渡态
+            this.renderer.resize();
+            const idx = this.animator.currentStep;
+            const step = this.animator.steps[idx];
+            if (step && typeof step.fn === 'function') {
+                step.fn();                       // 只绘制
+            } else {
+                this.renderer.clear();
+            }
+        },
+
+        /* ---------------- 可视化状态持久化 ----------------
+         * 刷新页面后不再回到默认算法：保存算法选择、速度、滑杆值、
+         * 数据（含各类专属输入与随机参数）与步骤位置；数据一致 ⇒
+         * 步骤序列一致 ⇒ 可安全恢复到同一画面。 */
+
+        _vizStateKey() {
+            return 'dsa-viz-state';
+        },
+
+        _collectVizState() {
+            return {
+                algo: this.currentAlgo,
+                category: this.currentCategory,
+                speed: this.animator ? this.animator.speed : 1,
+                step: this.animator ? this.animator.currentStep : -1,
+                comparisons: this.comparisonCount,
+                swaps: this.swapCount,
+                size: this._sizeValue(),
+                data: this.currentData || [],
+                strings: this.currentStrings || null,
+                triples: this.currentTriples || null,
+                expr: this.currentExpr || null,
+                hanoiN: this.currentHanoiN || null,
+                knapsack: this.currentKnapsack || null,
+                digraph: this.currentDigraph || null,
+                hashM: this.currentHashM || null,
+                matrix: this._customMatrix || this._currentMatrix || null,   // 含随机生成的图矩阵
+                listVal: this.currentListVal != null ? this.currentListVal : null,      // 链表插入值（随机参数）
+                seqVal: this.currentSeqVal != null ? this.currentSeqVal : null,         // 顺序表插入值（随机参数）
+                searchTarget: this.currentSearchTarget != null ? this.currentSearchTarget : null,  // 查找目标（随机参数）
+                savedAt: Date.now(),
+            };
+        },
+
+        _saveVizState() {
+            if (!this.currentAlgo) return;
+            try {
+                localStorage.setItem(this._vizStateKey(), JSON.stringify(this._collectVizState()));
+            } catch (e) { /* localStorage 满或不可用时静默放弃，不影响使用 */ }
+        },
+
+        /**
+         * 恢复上次会话的可视化状态。返回 true 表示已恢复。
+         * @private
+         */
+        _restoreVizState() {
+            let saved = null;
+            try {
+                saved = JSON.parse(localStorage.getItem(this._vizStateKey()) || 'null');
+            } catch (e) { saved = null; }
+            if (!saved || typeof saved !== 'object') return false;
+            const algo = this.algorithms[saved.algo] ? saved.algo : null;
+            if (!algo) return false;
+
+            // 恢复控件与数据字段
+            const selector = document.getElementById('viz-algo-selector');
+            if (selector) selector.value = algo;
+            const speedSlider = document.getElementById('viz-speed');
+            if (speedSlider && typeof saved.speed === 'number') {
+                speedSlider.value = String(saved.speed);
+                this.animator.setSpeed(saved.speed);
+            }
+            const sizeSlider = document.getElementById('viz-size');
+            if (sizeSlider && Number.isInteger(saved.size)) sizeSlider.value = String(saved.size);
+
+            this.currentAlgo = algo;
+            this.currentCategory = this.algorithms[algo].category;
+            this.currentData = Array.isArray(saved.data) && saved.data.every(v => typeof v === 'number' && isFinite(v))
+                ? saved.data : null;
+            this.currentStrings = saved.strings || null;
+            this.currentTriples = saved.triples || null;
+            this.currentExpr = saved.expr || null;
+            this.currentHanoiN = saved.hanoiN || null;
+            this.currentKnapsack = saved.knapsack || null;
+            this.currentDigraph = saved.digraph || null;
+            this.currentHashM = saved.hashM || null;
+            this._customMatrix = saved.matrix || null;
+            this.currentListVal = saved.listVal != null ? saved.listVal : null;
+            this.currentSeqVal = saved.seqVal != null ? saved.seqVal : null;
+            this.currentSearchTarget = saved.searchTarget != null ? saved.searchTarget : null;
+
+            // 恢复的数据无效（如版本变更）时放弃恢复，走全新初始化
+            if (this.currentData === null && ['string', 'sparse', 'ortho', 'queue', 'stackexpr', 'hanoi', 'topo', 'dp'].indexOf(this.currentCategory) === -1) {
+                return false;
+            }
+
+            // 用恢复的数据重建步骤序列（数据一致 ⇒ 步骤一致），并跳到上次位置。
+            // _restoring 全程为 true：loadAlgorithm 不再随机再生数据，
+            // runStep 触发的 onStep 也不重复计数（该步骤已在存档中计过）。
+            this._restoring = true;
+            try {
+                this.loadAlgorithm(algo);
+                const target = typeof saved.step === 'number' ? saved.step : 0;
+                if (this.animator.steps.length > 0) {
+                    this.animator.currentStep = Math.max(0, Math.min(target, this.animator.steps.length - 1));
+                    // 计数器一并恢复（loadAlgorithm 内会清零，这里在其后覆盖；
+                    // 此时的 runStep 因 _restoring 不再累加）
+                    this.comparisonCount = Number.isInteger(saved.comparisons) ? saved.comparisons : 0;
+                    this.swapCount = Number.isInteger(saved.swaps) ? saved.swaps : 0;
+                    this.animator.runStep();          // 重绘画面 + 保存状态
+                    this._updateCounters();
+                }
+                this._updateLabels();
+            } finally {
+                this._restoring = false;
+            }
+            return true;
         },
 
         /**
@@ -543,9 +735,15 @@
 
         /**
          * Generate random data based on size slider
-         * 每个分支都直接使用滑杆值（在类别量程内），保证滑杆真实控制数据规模
+         * 每个分支都直接使用滑杆值（在类别量程内），保证滑杆真实控制数据规模。
+         * 同时清除随机衍生参数（插入值/查找目标）——重新生成数据后必须重新抽取，
+         * 否则「随机生成」会复用旧参数（状态恢复路径不走本方法，不受影响）。
          */
         generateData() {
+            this.currentListVal = null;
+            this.currentSeqVal = null;
+            this.currentSearchTarget = null;
+
             const sizeSlider = document.getElementById('viz-size');
             const size = sizeSlider ? parseInt(sizeSlider.value) || 10 : 10;
 
@@ -919,6 +1117,10 @@
             }
 
             this.currentData = parsed.values;
+            // 自定义数据后重新抽取随机衍生参数（插入值/查找目标）
+            this.currentListVal = null;
+            this.currentSeqVal = null;
+            this.currentSearchTarget = null;
             // 散列：关键字需去重（同一关键字重复插入无意义），并联动表长
             if (this.currentCategory === 'hash') {
                 const seen = {};
