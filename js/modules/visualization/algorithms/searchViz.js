@@ -44,6 +44,7 @@
 
                 steps.push({
                     type: 'search',
+                    countCompare: 1,   // 参与顶部比较计数（type 保持 'search' 供渲染分发）
                     data: data.slice(),
                     highlights: highlights,
                     range: { low: i, high: i },
@@ -117,6 +118,7 @@
 
                 steps.push({
                     type: 'search',
+                    countCompare: 1,   // 参与顶部比较计数（type 保持 'search' 供渲染分发）
                     data: data.slice(),
                     highlights: { ...rangeHighlights },
                     range: { low, high },

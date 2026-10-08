@@ -168,11 +168,11 @@
         /**
          * Draw text at a position
          */
-        drawText(text, x, y, color, size) {
+        drawText(text, x, y, color, size, align) {
             const ctx = this.ctx;
             ctx.fillStyle = color || '#333';
             ctx.font = `${size || 14}px "Segoe UI", Arial, sans-serif`;
-            ctx.textAlign = 'center';
+            ctx.textAlign = align || 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(String(text), x, y);
         }

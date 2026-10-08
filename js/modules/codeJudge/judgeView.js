@@ -61,6 +61,14 @@ int main() {
       Store.set('codeJudge.code', code);
       persistJudgeState();
     }, 800));
+
+    // 存档系统采集快照前（archive:flush）立即落盘：编辑器当前内容直接写入
+    // 草稿 key，防抖窗口内未保存的输入也能进入手动存档/自动快照。
+    // 本会话从未初始化编辑器（未进入过代码评判）时不写，避免用空值覆盖已有草稿。
+    EventBus.on('archive:flush', () => {
+      if (!CodeEditor.getInstance()) return;
+      persistJudgeState();
+    });
   }
 
   // ─── Judge State (draft persistence) ─────────────────────

@@ -247,6 +247,8 @@
             const prev = new Array(n).fill(-1);
             const visited = new Set();
             dist[start] = 0;
+            // 距离统一格式化：∞ 不以原始 “Infinity” 形式出现在文案里
+            const fmt = (d) => d === Infinity ? '∞' : d;
 
             steps.push({
                 type: 'graph',
@@ -302,7 +304,7 @@
                             vertexStates: { ...edgeStates },
                             activeEdges: [{ from: u, to: v }],
                             distances: dist.slice(),
-                            description: `松弛边 ${String.fromCharCode(65 + u)}→${String.fromCharCode(65 + v)}: ${dist[u]}+${adjMatrix[u][v]}=${newDist} ${newDist < dist[v] ? '< ' + dist[v] + '，更新!' : '≥ ' + dist[v] + '，不更新'}`
+                            description: `松弛边 ${String.fromCharCode(65 + u)}→${String.fromCharCode(65 + v)}：${fmt(dist[u])}+${adjMatrix[u][v]}=${fmt(newDist)} ${newDist < dist[v] ? '< ' + fmt(dist[v]) + '，更优，更新!' : '≥ ' + fmt(dist[v]) + '，不更新'}`
                         });
 
                         if (newDist < dist[v]) {
@@ -365,8 +367,8 @@
                 const width = isActive ? 3 : 1.5;
                 renderer.drawLine(from.x, from.y, to.x, to.y, color, width);
 
-                // Weight label
-                if (edge.weight > 1) {
+                // Weight label（权值为 1 也显示，便于逐边核对）
+                if (edge.weight !== undefined) {
                     const midX = (from.x + to.x) / 2;
                     const midY = (from.y + to.y) / 2;
                     renderer.drawText(edge.weight, midX, midY - 8, '#666', 11);

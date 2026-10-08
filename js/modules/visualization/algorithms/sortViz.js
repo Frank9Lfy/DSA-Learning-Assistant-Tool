@@ -361,12 +361,13 @@
                     if (arr[j] < pivot) {
                         i++;
                         if (i !== j) {
+                            const moved = arr[j];   // 交换前取出——它才是 < pivot 的那个值
                             [arr[i], arr[j]] = [arr[j], arr[i]];
                             steps.push({
                                 type: 'swap',
                                 indices: [i, j],
                                 values: arr.slice(),
-                                description: `${arr[j]} < pivot，交换 arr[${i}] 和 arr[${j}]`
+                                description: `${moved} < pivot ${pivot}，把它交换到左侧位置 ${i}`
                             });
                         }
                     }

@@ -150,6 +150,7 @@
             for (let i = 0; i < data.length; i++) {
                 const val = data[i];
                 const path = [];
+                let duplicated = false;
 
                 steps.push({
                     type: 'tree',
@@ -172,7 +173,7 @@
                         type: 'tree',
                         tree: cloneTree(root),
                         highlights: highlightMap,
-                        description: `比较 ${val} 和 ${current.val}: ${val < current.val ? '去左子树' : '去右子树'}`
+                        description: `比较 ${val} 和 ${current.val}: ${val < current.val ? '去左子树' : val > current.val ? '去右子树' : '相等——重复值'}`
                     });
 
                     parent = current;
@@ -190,6 +191,7 @@
                             highlights: { [current.val]: COLORS.delete },
                             description: `${val} 已存在于树中，跳过重复值`
                         });
+                        duplicated = true;
                         break;
                     }
                 }
@@ -197,11 +199,11 @@
                 // Insert the node
                 if (!root) {
                     root = new TreeNode(val);
-                } else if (current === null && parent && direction) {
-                    parent[direction] = new TreeNode(val);
-                } else if (current === null) {
-                    // Duplicate was found, skip
+                } else if (duplicated) {
+                    // 重复值：前面已提示跳过，不插入，也不再追加“插入成功”步骤
                     continue;
+                } else if (parent && direction) {
+                    parent[direction] = new TreeNode(val);
                 }
 
                 const highlightMap = {};

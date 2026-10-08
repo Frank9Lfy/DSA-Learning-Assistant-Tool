@@ -822,4 +822,260 @@ j=7: next[6]=0。p[6]=a = p[0]=a → next[7] = 1 ✓</code></pre>
     ],
   },
 
+  /* ============ ch4 广义表（4.7） ============ */
+
+  'lesson-glist': {
+    title: '广义表：表头表尾、深度与存储结构',
+    chapter: 'ch4',
+    summary: [
+      '广义表是线性表的推广：元素既可以是原子，也可以是子表；长度 = 最外层元素个数，深度 = 括号最大重数。',
+      'head(LS) 取第一个元素（原子或子表）；tail(LS) 是其余元素组成的表——表尾一定是表，空表的表头表尾不存在。',
+      '深度递归定义：空表深度 1、原子深度 0、否则 1 + max{子表深度}；复合取元素运算从最里层往外化简。',
+      '存储用 utype 三类结点：0=表头（存引用计数 ref）、1=原子、2=子表（hlink 下钻）；tlink 连同层下一结点。',
+      '广义表可共享、可递归；删除共享子表前必须把表头的引用计数减 1，减到 0 才真正释放。',
+    ],
+    steps: [
+      {
+        title: '什么是广义表？',
+        content: `<p><b>广义表（General List）</b>是 n（n ≥ 0）个表元素组成的有限序列，记作：</p>
+          <pre class="lesson-tree">LS = ( a₁, a₂, …, aₙ )     ← 表名 LS，n 为长度</pre>
+          <p>它与线性表的唯一区别在第 <b>2 条</b>：</p>
+          <ul>
+            <li><b>原子</b>：不可再分的单个数据元素（线性表只有原子）；</li>
+            <li><b>子表</b>：本身又是一个广义表——<b>可以再分</b>。</li>
+          </ul>
+          <p>所以：<b>线性表是广义表的特例</b>（所有元素都是原子时）；广义表是线性表的推广。n = 0 时是<b>空表 ()</b>。</p>
+          <p><b>长度</b>只数最外层：有多少个逗号分隔的元素就多长，子表不管里面多少层都只算 1 个元素。课件一组经典例子（后面反复用到）：</p>
+          <table>
+            <tr><th>表</th><th>书写形式</th><th>长度</th><th>说明</th></tr>
+            <tr><td>A</td><td>A( )</td><td>0</td><td>空表</td></tr>
+            <tr><td>B</td><td>B(6, 2)</td><td>2</td><td>全是原子 → 退化为线性表</td></tr>
+            <tr><td>C</td><td>C('a', (5, 3, 'x'))</td><td>2</td><td>第二个元素是子表</td></tr>
+            <tr><td>D</td><td>D(B, C, A)</td><td>3</td><td>三个元素都是子表（表名做元素）</td></tr>
+            <tr><td>E</td><td>E(B, D)</td><td>2</td><td>嵌套引用：展开后深达 4 层</td></tr>
+            <tr><td>F</td><td>F(4, F)</td><td>2</td><td><b>递归表</b>：自己是自己的子表</td></tr>
+          </table>
+          <p>广义表的性质：<b>有次序性、有长度、有深度、可共享、可递归</b>。按"含不含子表 / 共享 / 递归"递进分类：线性表 → 纯表 → 再入（共享）表 → 递归表。</p>`,
+        interaction: {
+          type: 'quiz',
+          question: '广义表 ( a, (a, b), d, e, ((i, j), k) ) 的长度是多少？',
+          options: ['8', '3', '5', '6'],
+          answer: 2,
+          hint: '只数最外层逗号分隔的元素：a、(a,b)、d、e、((i,j),k) 共 5 个，子表内部再多元素也只算 1 个。',
+        },
+      },
+      {
+        title: '表头 head 与表尾 tail（易错重点）',
+        content: `<p>广义表最常考的两个基本操作（n &gt; 0 时）：</p>
+          <ul>
+            <li><b>表头 head(LS)</b>：表的<b>第一个元素</b>——可能是原子，也可能是子表；</li>
+            <li><b>表尾 tail(LS)</b>：除表头外<b>其余元素组成的表</b>——<b>一定是表</b>！哪怕只剩一个元素，也要再包一层括号。</li>
+          </ul>
+          <p>逐个验证（务必动手比划）：</p>
+          <table>
+            <tr><th>运算</th><th>结果</th><th>要点</th></tr>
+            <tr><td>head( B(6, 2) )</td><td>6</td><td>原子，无括号</td></tr>
+            <tr><td>tail( B(6, 2) )</td><td>(2)</td><td>剩 1 个元素也是<b>表</b>，带括号</td></tr>
+            <tr><td>head( C('a',(5,3,'x')) )</td><td>'a'</td><td>第一个元素是原子</td></tr>
+            <tr><td>tail( C('a',(5,3,'x')) )</td><td>((5,3,'x'))</td><td>外面这层括号是 tail 的，里面是子表本身——<b>两层括号别丢</b></td></tr>
+            <tr><td>head( ((5,3,'x')) )</td><td>(5,3,'x')</td><td>第一个元素是子表 → 表头就是它</td></tr>
+            <tr><td>tail( ((5,3,'x')) )</td><td>( )</td><td>只有一个元素，表尾是空表</td></tr>
+          </table>
+          <p>⚠️ 三个易错点：① tail 结果<b>永远带最外层括号</b>；② head 的结果是原子时<b>没有</b>括号、是子表时<b>有</b>括号；③ 空表 ( ) 的 head 和 tail <b>不存在</b>（对空表取表头表尾非法）。</p>`,
+        interaction: {
+          type: 'quiz',
+          question: 'L = (a, (b, c))，则 tail(L) = ？',
+          options: ['(b, c)', '((b, c))', 'b, c', '( )'],
+          answer: 1,
+          hint: '去掉第一个元素 a，剩下的元素是 (b,c) 这一个子表——tail 必须是表，所以外层还要包一层括号：((b,c))。',
+        },
+      },
+      {
+        title: '复合取元素：从里往外逐层化简',
+        content: `<p>考试真正爱考的是 head / tail 的<b>复合运算</b>。课件例题：</p>
+          <pre class="lesson-tree">L = ( (X, Y, z),  a,  (u, v, w) )      ← 取出原子 u</pre>
+          <p>做法：<b>先 tail 剥掉前面的元素，再 head 取出目标</b>。u 在第三个元素（子表）里，所以要剥两次、钻一层：</p>
+          <table>
+            <tr><th>步骤</th><th>运算</th><th>结果</th><th>说明</th></tr>
+            <tr><td>①</td><td>tail(L)</td><td>( a, (u,v,w) )</td><td>去掉第 1 个元素 (X,Y,z)</td></tr>
+            <tr><td>②</td><td>tail( tail(L) )</td><td>( (u,v,w) )</td><td>再去掉 a，只剩子表这一个元素</td></tr>
+            <tr><td>③</td><td>head( tail( tail(L) ) )</td><td>( u, v, w )</td><td>取出第 3 个元素——子表本身</td></tr>
+            <tr><td>④</td><td>head( head( tail( tail(L) ) ) )</td><td><b>u</b> ✓</td><td>再进子表取第一个原子</td></tr>
+          </table>
+          <p>所以答案是 <code>head( head( tail( tail(L) ) ) )</code>。</p>
+          <p>💡 <em>套路总结：目标原子前面隔了 k 个元素 → 先来 k 次 tail；目标在第几层子表里 → 再来几层 head。每做一步就把结果写出来，从最里层往外代入，千万别跳步。</em></p>
+          <p>👉 到<a href="#/visualization" class="lesson-link">算法可视化 → 广义表求表头/表尾</a>，用随机数据反复演练这套化简。</p>`,
+        interaction: {
+          type: 'quiz',
+          question: 'L = ( (a, b), c )，则 head( tail(L) ) = ？',
+          options: ['(c)', 'a', '(a, b)', 'c'],
+          answer: 3,
+          hint: 'tail(L) = (c)（只剩 c 一个元素也要带括号）；再取表头得到第一个元素——原子 c 本身，无括号。',
+        },
+      },
+      {
+        title: '深度：括号的最大重数',
+        content: `<p><b>深度（depth）</b> = 表展开后<b>括号嵌套的最大层数</b>。递归定义（必须背下来）：</p>
+          <pre class="lesson-tree">Depth( 原子 ) = 0
+Depth( 空表 ( ) ) = 1
+Depth( LS ) = 1 + max{ Depth(aᵢ) }     ← 所有元素深度的最大值加 1</pre>
+          <p>用上一节的例子逐个算（A、B、C…的长度已经知道，现在补深度）：</p>
+          <table>
+            <tr><th>表</th><th>展开</th><th>计算</th><th>长度 / 深度</th></tr>
+            <tr><td>A( )</td><td>( )</td><td>空表 → 1</td><td>0 / 1</td></tr>
+            <tr><td>B(6, 2)</td><td>(6, 2)</td><td>max(0,0)+1 = 1</td><td>2 / 1</td></tr>
+            <tr><td>C('a', (5,3,'x'))</td><td>2 层括号</td><td>max(0, 1)+1 = 2</td><td>2 / 2</td></tr>
+            <tr><td>D(B, C, A)</td><td>套用上面结果</td><td>max(1, 2, 1)+1 = 3</td><td>3 / 3</td></tr>
+            <tr><td>E(B, D)</td><td>套用 D</td><td>max(1, 3)+1 = 4</td><td>2 / 4</td></tr>
+            <tr><td>F(4, F)</td><td>自己套自己</td><td>无限展开</td><td>2 / <b>∞</b></td></tr>
+          </table>
+          <p>注意两点：① <b>长度和深度互不相干</b>——E 只有 2 个元素却深达 4 层；② 递归表 F(4, F) 的深度不存在（∞），这正是"广义表可递归"的体现。</p>`,
+        interaction: {
+          type: 'quiz',
+          question: "已知 B(6,2) 深 1、C('a',(5,3,'x')) 深 2、A( ) 深 1，则 D(B, C, A) 的深度是？",
+          options: ['2', '4', '6', '3'],
+          answer: 3,
+          hint: 'Depth(D) = 1 + max{Depth(B), Depth(C), Depth(A)} = 1 + max{1, 2, 1} = 3。子表深度直接用已算好的结果，别重复展开。',
+        },
+      },
+      {
+        title: '存储结构：utype 三类结点',
+        content: `<p>广义表"原子 + 子表"两种元素形状不同，课件用<b>带标志域的结点</b>统一表示，每个结点三部分：<code>utype | info | tlink</code>：</p>
+          <table>
+            <tr><th>utype</th><th>结点类型</th><th>info 存什么</th></tr>
+            <tr><td>0</td><td><b>表头结点</b></td><td>引用计数 ref（多少个表共享它）</td></tr>
+            <tr><td>1</td><td><b>原子结点</b></td><td>原子值 value</td></tr>
+            <tr><td>2</td><td><b>子表结点</b></td><td>hlink —— 指向子表<b>表头结点</b>的指针</td></tr>
+          </table>
+          <p><b>tlink</b>（同层链）：表头结点的 tlink 指向本表第一个元素；每个元素结点的 tlink 指向<b>同层下一个</b>元素，表尾为 ∧（NULL）。</p>
+          <p>以 L = (a, (b, c)) 为例画出整个结构（横向 tlink、竖向 hlink）：</p>`,
+        html: `<pre class="lesson-tree">                    tlink（同层下一结点）
+L ──▶ ┌──────┐    ┌───────┐    ┌───────┐
+      │0│ref │ ═▶ │1│  a  │ ═▶ │2│  ▼  │ ──▶ ∧
+      └──────┘    └───────┘    └───┬───┘
+       表头结点     原子结点       │hlink
+        utype=0    utype=1       ▼
+                 ┌──────┐    ┌───────┐    ┌───────┐
+                 │0│ref │ ═▶ │1│  b  │ ═▶ │1│  c  │ ──▶ ∧
+                 └──────┘    └───────┘    └───────┘
+                  子表的表头    两个原子结点（同层链）</pre>
+<p style="margin-top:8px">要点：① 每个表（含子表）都<b>有自己的表头结点</b>，hlink 下钻到它、tlink 在它内部横走；② 长度 = 表头 tlink 链上的结点数；③ 深度 = hlink 下钻的最大层数 +1。表头结点存 <b>ref 引用计数</b>是为了支持<b>共享</b>：D(B,C,A) 里 A 被 D 引用，ref 加 1；删除时先把 ref 减 1，<b>减到 0 才真正释放</b>，否则别的表还在用。</p>`,
+      },
+      {
+        title: '建立算法（代码走读）',
+        content: `<p>从书写串建立存储结构：遇 <code>(</code> 先建表头结点，再逐个读元素——原子直接建结点，子表<b>递归</b>建立后用 hlink 挂上；每个结点接在同层链尾。</p>`,
+        code: {
+          lang: 'cpp',
+          activeLine: 8,
+          code: `// 从书写串 s 建立广义表，返回表头结点；s 随递归前移（引用传递）
+GenListNode* Create(const char*& s) {
+    if (*s == '(') s++;                    // 跳过 '('
+    GenListNode* head = new GenListNode;
+    head->utype = 0;                       // 表头结点
+    head->info.ref = 1;
+    GenListNode* tail = head;              // 同层链尾指针
+    while (*s && *s != ')') {
+        GenListNode* nd = new GenListNode;
+        if (*s == '(') {                   // 子表：递归建立
+            nd->utype = 2;
+            nd->info.hlink = Create(s);    // s 在递归中被推进
+        } else {                           // 原子：读一个字符
+            nd->utype = 1;
+            nd->info.value = *s++;
+        }
+        tail->tlink = nd;                  // 接到同层链尾
+        tail = nd;
+        if (*s == ',') s++;                // 跳过分隔逗号
+    }
+    if (*s == ')') s++;                    // 跳过 ')'
+    return head;
+}`,
+          explanations: {
+            3: '每个表对应一次调用：进来先消费掉自己的左括号。',
+            5: '表头结点 utype=0；ref=1 表示当前有一个名字引用它。',
+            7: 'tail 始终指向同层链最后一个结点，新结点 O(1) 接上。',
+            10: '子表结点 utype=2：递归调用返回子表的表头，hlink 指向它。',
+            13: '原子结点 utype=1：info 存字符值。注意 s++ 消费掉这个原子。',
+            18: '先接链再跳逗号——逗号是"元素之间"的分隔符，最后一个元素后面没有逗号。',
+            20: '消费右括号后返回，调用者的 s 已越过整个子表，正好接着读外层逗号。',
+          },
+        },
+      },
+      {
+        title: '求深度算法（课件原版）',
+        content: `<p>深度的递归定义直接翻译成代码：横扫本层（tlink 链）找<b>子表</b>，递归求其深度取 max，最后 +1。跟踪 C('a',(5,3,'x'))：扫 'a'（原子跳过）→ 递归 (5,3,'x') 返回 1 → m=1 → 返回 1+1=2 ✓</p>`,
+        code: {
+          lang: 'cpp',
+          activeLine: 9,
+          code: `template <class T>
+int GenList<T>::depth(GenListNode<T> *ls) {
+    if (ls->tlink == NULL) return 1;      // 空表，深度为 1
+    GenListNode<T> *temp = ls->tlink;
+    int m = 0, n;                         // m：最大子表深度
+    while (temp != NULL) {                // 沿 tlink 横扫顶层
+        if (temp->utype == 2) {           // 扫到子表结点
+            n = depth(temp->info.hlink);  // 递归求子表深度
+            if (m < n) m = n;             // 取最大
+        }
+        temp = temp->tlink;
+    }
+    return m + 1;                         // 深度 = 最大子表深度 + 1
+}`,
+          explanations: {
+            3: '递归出口①：表头后面没有任何元素 → 空表，深度直接为 1。',
+            5: 'm 累计本层扫到的最大子表深度，原子对 m 没有贡献（深度 0）。',
+            8: '只对 utype=2（子表）的结点递归；沿 hlink 进入子表的表头结点。',
+            9: '递归返回子表深度 n，比 m 大就更新——对应定义里的 max。',
+            12: '整个结构每个结点只访问一次，时间 O(结点数)，递归栈深 O(表的深度)。',
+          },
+        },
+      },
+      {
+        title: '递归打印：建立的逆过程',
+        content: `<p>打印（输出书写形式）与建立互为逆过程：进入子表输出 <code>(</code>，沿 tlink 扫元素——原子输出值、子表递归，元素间补逗号——离开时输出 <code>)</code>。</p>`,
+        code: {
+          lang: 'cpp',
+          activeLine: 3,
+          code: `void Print(GenListNode* ls) {              // ls 指向表头结点
+    cout << '(';                          // 进入：输出左括号
+    for (GenListNode* p = ls->tlink; p; p = p->tlink) {
+        if (p != ls->tlink) cout << ',';  // 非首元素先补逗号
+        if (p->utype == 1)
+            cout << p->info.value;        // 原子：输出值
+        else
+            Print(p->info.hlink);         // 子表：递归（自带括号）
+    }
+    cout << ')';                          // 离开：输出右括号
+}`,
+          explanations: {
+            2: '进入任何一层（包括空表）都先输出 "(" —— 空表因此恰好打印成 "()"。',
+            4: '循环沿 tlink 走同层链；p != 首元素说明前面已有输出，补一个逗号。',
+            6: '原子结点直接输出 info.value。',
+            8: '子表结点交给递归——递归自己会带括号，外层不用也不能再补。',
+            10: '本层扫完输出 ")"，与第 2 行的 "(" 配对。',
+          },
+        },
+        interaction: {
+          type: 'quiz',
+          question: '对空表 () 调用 Print（表头的 tlink 为 NULL），输出什么？',
+          options: ['( )', '∧', '()', '什么都不输出'],
+          answer: 2,
+          hint: '先输出 "("，循环体一次都不执行（没有元素），再输出 ")"——恰好一对空括号。',
+        },
+      },
+      {
+        title: '小结与易错点清单',
+        content: `<ul>
+          <li><b>长度</b>数最外层元素（子表算 1 个）；<b>深度</b>是括号最大重数：空表 1、原子 0、否则 1 + max{子表深度}；递归表深度 ∞；</li>
+          <li><b>tail 必为表</b>（带括号），head 是原子时无括号、是子表时有括号；<b>空表无表头表尾</b>；</li>
+          <li>复合运算 head(head(tail(tail(L)))) 从<b>最里层往外</b>逐层代入，每步写清结果；</li>
+          <li>存储：表头 utype=0（ref）/ 原子 utype=1 / 子表 utype=2（hlink）；<b>tlink 同层、hlink 下钻</b>；</li>
+          <li>共享表靠表头<b>引用计数 ref</b> 管理：删除先减 ref，减到 0 才释放；</li>
+          <li>建立 / 求深度 / 打印 / 复制全是<b>同一套递归骨架</b>：横扫 tlink 链，遇 utype=2 就沿 hlink 递归。</li>
+        </ul>
+        <p>👉 去<a href="#/visualization" class="lesson-link">算法可视化 → 广义表</a>看建立 / 表头表尾 / 求深度 / 打印四个动画（支持自定义书写串），再回<a href="#/quiz/ch4" class="lesson-link">练习测验</a>做第 4 章题目；知识点速查见<a href="#/knowledge/ch4-7" class="lesson-link">知识库 4.7 广义表</a>。</p>`,
+      },
+    ],
+  },
+
 });

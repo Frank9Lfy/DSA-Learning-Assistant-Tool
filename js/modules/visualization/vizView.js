@@ -90,6 +90,11 @@
             'dp-knapsack': { category: 'dp', name: '0-1 背包填表', fn: 'dpKnapsack' },
             // B 树（courseViz）
             'btree-insert': { category: 'btree', name: 'B 树插入与分裂', fn: 'btreeInsert' },
+            // 广义表（courseViz，4.7）
+            'glist-build': { category: 'glist', name: '广义表建立（存储结构）', fn: 'glistBuild' },
+            'glist-headtail': { category: 'glist', name: '广义表求表头 / 表尾', fn: 'glistHeadTail' },
+            'glist-depth': { category: 'glist', name: '广义表递归求深度', fn: 'glistDepth' },
+            'glist-print': { category: 'glist', name: '广义表递归遍历打印', fn: 'glistPrint' },
         },
 
         // 下拉选项分组（动态注入；value 即注册表 key）
@@ -101,6 +106,7 @@
             { label: '图算法', keys: ['graph-bfs', 'graph-dfs', 'graph-dijkstra', 'topo-sort'] },
             { label: '查找算法', keys: ['linear-search', 'binary-search', 'hash-probe', 'btree-insert', 'kmp'] },
             { label: '矩阵与串', keys: ['sparse-transpose', 'ortho-list'] },
+            { label: '广义表', keys: ['glist-build', 'glist-headtail', 'glist-depth', 'glist-print'] },
             { label: '动态规划', keys: ['dp-lcs', 'dp-knapsack'] }
         ],
 
@@ -131,6 +137,7 @@
             sparse:    { min: 4, max: 16, unit: '非零元' },
             ortho:     { min: 4, max: 16, unit: '非零元' },
             btree:     { min: 3, max: 8,  unit: '关键字' },
+            glist:     { min: 3, max: 9,  unit: '原子' },
         },
 
         /**
@@ -159,14 +166,16 @@
             this.animator = new Animator();
 
             // Setup animator callbacks
-            // 计数在这里做（而不是渲染闭包里）：重绘只执行渲染闭包、不经过
-            // onStep，因此 resize/切页后的重绘不会重复累加比较/交换次数。
-            // _restoring 期间的 runStep 是"跳回已计过数的画面"，同样不计数。
+            // 计数不在这里累加，而是查 _buildAnimatorSteps 预计算的前缀计数表：
+            // 播到第 i 步应有的比较/交换次数是确定的，直接赋值即可——
+            // 重绘不经过 onStep 不影响读数；⏮ 后退、播完自动重播、状态恢复
+            // （_restoring）得到的都是该步骤的正确计数，不会重复累加。
             this.animator.onStep((stepIndex) => {
                 const meta = this._rawSteps ? this._rawSteps[stepIndex] : null;
-                if (!this._restoring && meta) {
-                    if (meta.type === 'compare') this.comparisonCount++;
-                    if (meta.type === 'swap') this.swapCount++;
+                const pc = this._prefixCounts ? this._prefixCounts[stepIndex] : null;
+                if (pc) {
+                    this.comparisonCount = pc.comparisons;
+                    this.swapCount = pc.swaps;
                 }
                 this._updateCounters();
                 this._updateUI(stepIndex, meta);
@@ -189,6 +198,10 @@
             // 窗口尺寸变化 / 浏览器标签页切回时重绘画布：
             // canvas.width 赋值（renderer.resize）会清空画布，必须补一次当前步骤的绘制
             window.addEventListener('resize', DOM.debounce(() => this._redrawCurrentStep(), 150));
+
+            // 存档系统采集快照前（archive:flush）兜底落盘可视化状态
+            //（正常每步都会 _saveVizState，这里覆盖尚未触发过的边缘场景）
+            EventBus.on('archive:flush', () => this._saveVizState());
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
                     // 后台 rAF 完全暂停：恢复播放前重置时间基准，避免回来瞬间快进多步
@@ -470,6 +483,12 @@
                     case 'btree':
                         rawSteps = CourseViz.btreeInsert(this.currentData.slice(0, 8));
                         break;
+                    case 'glist': {
+                        // 广义表书写串（如 "(a,(b,c),d)"）由滑杆随机生成或用户自定义
+                        const s = this.currentGList || '(a,(b,c),d)';
+                        rawSteps = CourseViz[algo.fn](s);
+                        break;
+                    }
                     case 'string': {
                         const s = this.currentStrings || DEFAULT_STRINGS;
                         rawSteps = SearchViz.kmp(s.T, s.P);
@@ -505,14 +524,24 @@
 
         /**
          * Convert raw algorithm steps into animator steps with render functions
-         * 步骤闭包只负责绘制；比较/交换计数在 animator.onStep 回调中做——
-         * 这样 _redrawCurrentStep 重绘时不经过 onStep，不会重复累加计数
+         * 步骤闭包只负责绘制；比较/交换计数预计算为前缀表，onStep 查表赋值——
+         * 这样 _redrawCurrentStep 重绘不经过 onStep，⏮ 后退与重播也不会重复累加
          * @param {Array} rawSteps - Steps from algorithm module
          * @private
          */
         _buildAnimatorSteps(rawSteps) {
             this.animator.clear();
             this._rawSteps = rawSteps;
+
+            // 前缀计数表：播到第 i 步为止累计的比较/交换次数。
+            // type === 'compare' / 'swap' 为排序类步骤；countCompare 为查找类
+            // 步骤（其 type 需保持 'search' 供渲染分发，故用独立字段参与计数）。
+            let cc = 0, sc = 0;
+            this._prefixCounts = rawSteps.map(s => {
+                if (s.type === 'compare' || s.countCompare) cc++;
+                if (s.type === 'swap') sc++;
+                return { comparisons: cc, swaps: sc };
+            });
 
             for (let i = 0; i < rawSteps.length; i++) {
                 const step = rawSteps[i];
@@ -567,6 +596,7 @@
                 data: this.currentData || [],
                 strings: this.currentStrings || null,
                 triples: this.currentTriples || null,
+                glist: this.currentGList || null,
                 expr: this.currentExpr || null,
                 hanoiN: this.currentHanoiN || null,
                 knapsack: this.currentKnapsack || null,
@@ -617,6 +647,7 @@
                 ? saved.data : null;
             this.currentStrings = saved.strings || null;
             this.currentTriples = saved.triples || null;
+            this.currentGList = saved.glist || null;
             this.currentExpr = saved.expr || null;
             this.currentHanoiN = saved.hanoiN || null;
             this.currentKnapsack = saved.knapsack || null;
@@ -641,8 +672,8 @@
                 const target = typeof saved.step === 'number' ? saved.step : 0;
                 if (this.animator.steps.length > 0) {
                     this.animator.currentStep = Math.max(0, Math.min(target, this.animator.steps.length - 1));
-                    // 计数器一并恢复（loadAlgorithm 内会清零，这里在其后覆盖；
-                    // 此时的 runStep 因 _restoring 不再累加）
+                    // 计数器由 runStep 查前缀计数表自动恢复（数据一致 ⇒ 计数一致）；
+                    // 先显式赋值仅用于兜底可能的旧版存档格式
                     this.comparisonCount = Number.isInteger(saved.comparisons) ? saved.comparisons : 0;
                     this.swapCount = Number.isInteger(saved.swaps) ? saved.swaps : 0;
                     this.animator.runStep();          // 重绘画面 + 保存状态
@@ -687,6 +718,7 @@
                 case 'ctree':
                 case 'btree':
                 case 'ortho':
+                case 'glist':
                     if (typeof CourseViz !== 'undefined') {
                         CourseViz.render(this.renderer, step);
                     }
@@ -764,6 +796,14 @@
             // 图：滑杆/随机重新生成时会丢弃自定义边表
             if (this.currentCategory === 'graph') {
                 this._customMatrix = null;
+            }
+
+            // 广义表：滑杆值 = 原子个数（3~9），随机生成书写串（嵌套 ≤ 3 层）
+            if (this.currentCategory === 'glist') {
+                const n = Math.max(3, Math.min(9, size));
+                this.currentGList = this._randomGList(n);
+                this.currentData = [];
+                return;
             }
 
             // ── courseViz 各类别 ──
@@ -880,6 +920,35 @@
                 return s;
             };
             return { T: randStr(tLen), P: randStr(pLen) };
+        },
+
+        /**
+         * 随机生成含 n 个原子的广义表书写串（互异字母，嵌套 ≤ 3 层括号）
+         * 结构规则：每层 1~3 个槽位，越深出现子表的概率越低，最深层只放原子
+         * @param {number} n - 原子个数（3~9）
+         * @returns {string} 如 "(a,(b,c),d)"
+         * @private
+         */
+        _randomGList(n) {
+            const letters = 'abcdefghijklmnopqrstuvwxyz'.split('')
+                .sort(() => Math.random() - 0.5).slice(0, n);
+            let idx = 0;
+            const gen = (depth) => {
+                const arr = [];
+                const slots = 1 + Math.floor(Math.random() * 3);
+                for (let j = 0; j < slots && idx < letters.length; j++) {
+                    if (depth < 2 && idx < letters.length - 1 && Math.random() < 0.3) {
+                        arr.push(gen(depth + 1));      // 子表槽位
+                    } else {
+                        arr.push(letters[idx++]);      // 原子槽位
+                    }
+                }
+                return arr;
+            };
+            const spec = gen(0);
+            while (idx < letters.length) spec.push(letters[idx++]);   // 兜底：剩余原子平铺到顶层
+            const toStr = (a) => '(' + a.map(e => Array.isArray(e) ? toStr(e) : e).join(',') + ')';
+            return toStr(spec);
         },
 
         /**
@@ -1071,6 +1140,10 @@
                 this._showCustomStrings();
                 return;
             }
+            if (this.currentCategory === 'glist') {
+                this._showCustomGList();
+                return;
+            }
             if (this.currentCategory === 'sparse' || this.currentCategory === 'ortho') {
                 this._showCustomTriples();
                 return;
@@ -1135,6 +1208,30 @@
                 this._updateLabels();
             }
 
+            if (this.currentAlgo) {
+                this.loadAlgorithm(this.currentAlgo);
+            }
+        },
+
+        /**
+         * 广义表自定义输入：书写串（原子为单个字母/数字）
+         * @private
+         */
+        _showCustomGList() {
+            const input = prompt(
+                '请输入广义表的书写形式（原子用单个字母或数字，嵌套最多 4 层，原子最多 12 个）\n' +
+                '如：(a,(b,c),d)、((a,b),c,())、(x,(y,(z,w)))',
+                this.currentGList || '(a,(b,c),d)'
+            );
+            if (input === null) return;
+            const s = String(input || '').trim();
+            if (!s) { alert('广义表不能为空'); return; }
+            const checked = CourseViz.glistValidate(s);
+            if (!checked.ok) {
+                alert('不是合法的广义表：' + checked.msg);
+                return;
+            }
+            this.currentGList = s;
             if (this.currentAlgo) {
                 this.loadAlgorithm(this.currentAlgo);
             }

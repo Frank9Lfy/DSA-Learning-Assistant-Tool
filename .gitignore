@@ -1,2 +1,5 @@
 BUG_FIXES.md
 *.zip
+VIZ_ERROR_LOG.md
+__verify_viz_bugs.js
+tools/verify-viz-descriptions.js

@@ -444,8 +444,10 @@
   border: 1px solid var(--border-light);
   border-radius: var(--border-radius);
   margin-top: var(--space-sm);
-  font-size: var(--font-size-sm);
-  min-height: 60px;
+  /* 略微放大解释文字（原 --font-size-sm = 0.875rem），并放宽行距便于阅读长句 */
+  font-size: 0.95rem;
+  line-height: 1.65;
+  min-height: 64px;
 }
 
 .viz-info {

@@ -51,7 +51,7 @@ const SettingsView = (() => {
           </label>
         </div>
         <p class="text-sm text-muted set-desc">
-          学习数据（教学进度、错题本、测验历史、收藏、代码草稿、对话记录等）发生变化时自动生成快照；
+          学习数据（教学进度、错题本、测验历史、收藏、代码草稿、对话记录、可视化状态等）发生变化时自动生成快照；
           另有定时兜底与页面关闭前强制保存。若数据被误清，打开页面时会主动询问是否从自动存档恢复。
         </p>
         <div class="set-row">
@@ -184,12 +184,16 @@ const SettingsView = (() => {
   }
 
   function downloadAuto() {
-    const auto = Archive.getAutoSnapshot();
-    if (Archive.isEmpty(auto)) {
-      DOM.toast('暂无自动存档可下载', 'warning');
+    // 导出「当前实时状态」而非滞后的上次自动快照：
+    // collect() 会先广播 archive:flush，把代码评测编辑器中
+    // 防抖未落盘的最新代码一并采集进导出文件
+    const snap = Archive.collect();
+    if (Archive.isEmpty(snap)) {
+      DOM.toast('暂无可导出的数据', 'warning');
       return;
     }
-    Archive.exportSnapshot(auto);
+    Archive.exportSnapshot(snap);
+    DOM.toast('已导出当前状态（含最新代码草稿）', 'success');
   }
 
   function saveNamedSlot() {
@@ -273,9 +277,12 @@ const SettingsView = (() => {
   function clearAllData() {
     if (!confirm('确定清空全部学习数据（含存档）吗？此操作不可恢复！')) return;
     if (!confirm('再次确认：真的要清空吗？建议先在上方保存或下载一份存档。')) return;
-    Object.values(APP_CONSTANTS.STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
-    localStorage.removeItem('dsa-lesson-progress-v1');
-    localStorage.removeItem('dsa-mistake-custom-questions');
+    // 按前缀全量清理：应用所有 key 均以 dsa- 开头（含各模块硬编码 key、
+    // 可视化状态与存档自身），与 Archive.TRACKED_KEYS 的白名单保持一致，
+    // 避免逐个列举 key 时遗漏（此前漏掉了 dsa-viz-state 等）
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('dsa-'))
+      .forEach(key => localStorage.removeItem(key));
     location.hash = '#/knowledge';
     location.reload();
   }

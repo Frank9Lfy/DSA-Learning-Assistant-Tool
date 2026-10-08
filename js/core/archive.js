@@ -33,6 +33,7 @@ const Archive = (() => {
     K.JUDGE_STATE,                      // 代码评判草稿
     K.CHAT_HISTORY,                     // AI 对话记录
     K.KNOWLEDGE_POS,                    // 知识检索位置
+    'dsa-viz-state',                    // 算法可视化状态（算法/数据/步骤位置，vizView.js）
   ];
 
   // 存档系统自身写入的 key（不触发自动快照，避免自触发循环）
@@ -61,8 +62,24 @@ const Archive = (() => {
 
   /* ---------- 快照 ---------- */
 
-  /** 收集当前全部被跟踪数据，生成一份快照对象 */
+  // 正在广播 flush / 采集数据期间置位：此时 flush 处理器写回的 localStorage
+  // 不再触发自动快照调度，避免「快照→flush→写入→再调度快照」的防抖循环
+  let collecting = false;
+
+  /**
+   * 收集当前全部被跟踪数据，生成一份快照对象。
+   * 采集前先广播 archive:flush：让持有「尚未落盘内存态」的模块把最新内容
+   * 写入 localStorage（如代码评判编辑器 800ms 防抖的草稿、可视化当前状态），
+   * 保证手动存档 / 自动快照 / 恢复前预留快照拿到的都是当前真实状态。
+   */
   function collect() {
+    if (!collecting) {
+      collecting = true;
+      try {
+        EventBus.emit('archive:flush');
+      } catch (e) { /* 单个模块 flush 失败不应阻断存档 */ }
+      collecting = false;
+    }
     const data = {};
     TRACKED_KEYS.forEach(key => {
       const val = Storage.get(key, null);
@@ -266,6 +283,9 @@ const Archive = (() => {
       && v.every(m => isPlainObj(m) && typeof m.content === 'string'
         && (m.role === 'user' || m.role === 'assistant')),
     [K.KNOWLEDGE_POS]: v => typeof v === 'string' && v.length <= 20,
+    ['dsa-viz-state']: v => isPlainObj(v)
+      && (v.algo === undefined || (typeof v.algo === 'string' && v.algo.length <= 60))
+      && JSON.stringify(v).length <= 20000,
   };
 
   /**
@@ -366,13 +386,13 @@ const Archive = (() => {
     } catch (e) { /* ignore */ }
   }
 
-  /** 包装 Storage.set：被跟踪数据变化 → 防抖自动快照 */
+  /** 包装 Storage.set：被跟踪数据变化 → 防抖自动快照（collect 期间的写入除外） */
   function installStorageHook() {
     if (Storage.__archiveHooked) return;
     const origSet = Storage.set.bind(Storage);
     Storage.set = function (key, value) {
       origSet(key, value);
-      if (!INTERNAL_KEYS.includes(key) && TRACKED_KEYS.includes(key)) {
+      if (!collecting && !INTERNAL_KEYS.includes(key) && TRACKED_KEYS.includes(key)) {
         scheduleAutoSave();
       }
     };
@@ -418,6 +438,12 @@ const Archive = (() => {
     if (d['dsa-mistake-custom-questions']) items.push({ icon: '📥', label: '自定义题目', detail: cnt(d['dsa-mistake-custom-questions']) + ' 道' });
     if (d[K.BOOKMARKS]) items.push({ icon: '🔗', label: '资源收藏', detail: cnt(d[K.BOOKMARKS]) + ' 个' });
     if (d[K.JUDGE_STATE]) items.push({ icon: '💻', label: '代码评判草稿', detail: '已保存' });
+    if (d['dsa-viz-state']) {
+      const algo = d['dsa-viz-state'].algo;
+      const name = (typeof VizView !== 'undefined' && VizView.algorithms && VizView.algorithms[algo])
+        ? VizView.algorithms[algo].name : (algo || '已保存');
+      items.push({ icon: '📈', label: '可视化状态', detail: name });
+    }
     if (d[K.CHAT_HISTORY]) items.push({ icon: '🤖', label: 'AI 对话', detail: cnt(d[K.CHAT_HISTORY]) + ' 条' });
     if (d[K.KNOWLEDGE_POS]) items.push({ icon: '📖', label: '知识检索位置', detail: d[K.KNOWLEDGE_POS] });
     if (d[K.LAST_ROUTE]) items.push({ icon: '🧭', label: '上次位置', detail: routeName(d[K.LAST_ROUTE]) });

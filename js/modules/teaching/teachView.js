@@ -17,6 +17,9 @@ const TeachView = (() => {
   let quizState = null; // { selected: -1, answered: bool, correct: bool, skipped: bool }
   // 本次学习中未掌握（跳过）的步骤下标
   let sessionWeak = [];
+  // 「已恢复到上次的学习进度」每门课每次页面会话只提示一次：
+  // 连续点开多门有进度的课程时不再逐个弹提示（toast 堆叠）
+  const resumeToastShown = new Set();
 
   /* ---------------- 进度工具 ---------------- */
 
@@ -346,7 +349,12 @@ const TeachView = (() => {
     const total = LessonPlayer.getStepCount(lessonId);
     if (!forceRestart && p && !p.done && typeof p.step === 'number' && p.step < total) {
       currentStep = p.step;
-      DOM.toast('已恢复到上次的学习进度', 'info');
+      // 仅当存在真实进度（学到第 2 步及以后）时才提示恢复；
+      // 只打开过一次（step=0，与全新开始无异）或首次打开均不弹提示
+      if (p.step > 0 && !resumeToastShown.has(lessonId)) {
+        resumeToastShown.add(lessonId);
+        DOM.toast('已恢复到上次的学习进度', 'info');
+      }
     } else {
       currentStep = 0;
       if (p && p.done && !forceRestart) {
