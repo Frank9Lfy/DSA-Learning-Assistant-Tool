@@ -28,6 +28,267 @@ const CourseViz = (() => {
         label: '#666666', sub: '#999999', text: '#333333'
     };
 
+    /* ── 右侧代码面板配套片段（与各生成器步骤严格同构，key 与注册表一致） ── */
+    const CODE = {
+        'circular-queue': {
+            title: '循环队列（牺牲一格法判满判空）',
+            lines: [
+                '// 队空: front == rear；队满: (rear+1)%k == front',
+                'Status EnQueue(SqQueue Q, int x) {',
+                '  if ((Q.rear + 1) % k == Q.front)',
+                '    return ERROR;',
+                '  Q.base[Q.rear] = x;',
+                '  Q.rear = (Q.rear + 1) % k;',
+                '  return OK;',
+                '}',
+                'Status DeQueue(SqQueue Q) {',
+                '  if (Q.front == Q.rear)',
+                '    return ERROR;',
+                '  x = Q.base[Q.front];',
+                '  Q.front = (Q.front + 1) % k;',
+                '  return OK;',
+                '}',
+            ],
+        },
+        'infix-to-postfix': {
+            title: '中缀转后缀（运算符栈法）',
+            lines: [
+                'void infixToPostfix(char E[]) {',
+                '  for (读入的每个字符 ch) {',
+                '    if (ch 是操作数)',
+                '      直接输出 ch;',
+                '    else if (ch == \'(\')',
+                '      Push(OPTR, ch);',
+                '    else if (ch == \')\') {',
+                '      while (栈顶 != \'(\') 输出 Pop();',
+                '      Pop();              // 弃 \'(\'',
+                '    } else {               // 运算符',
+                '      while (栈不空 && 优先级(栈顶) >= 优先级(ch))',
+                '        输出 Pop();',
+                '      Push(OPTR, ch);',
+                '    }',
+                '  }',
+                '  while (栈不空) 输出 Pop();',
+                '}',
+            ],
+        },
+        'hanoi': {
+            title: '汉诺塔（递归分解：n-1 + 1 + n-1）',
+            lines: [
+                'void hanoi(int n, char A, char B, char C) {',
+                '  if (n == 0) return;',
+                '  hanoi(n - 1, A, C, B);   // 上面 n-1 个: A→B',
+                '  move(A, C);              // 最大盘: A→C',
+                '  hanoi(n - 1, B, A, C);   // n-1 个: B→C',
+                '}',
+            ],
+        },
+        'bst-preorder': {
+            title: '先序遍历（非递归：弹出即访问）',
+            lines: [
+                'void preorder(TreeNode root) {',
+                '  Stack<TreeNode> S;',
+                '  S.push(root);',
+                '  while (!S.empty()) {',
+                '    TreeNode node = S.pop();',
+                '    visit(node);            // 根最先',
+                '    if (node.right != null)',
+                '      S.push(node.right);   // 先压右',
+                '    if (node.left != null)',
+                '      S.push(node.left);    // 再压左',
+                '  }',
+                '}',
+            ],
+        },
+        'bst-inorder': {
+            title: '中序遍历（非递归：左链入栈）',
+            lines: [
+                'void inorder(TreeNode root) {',
+                '  TreeNode cur = root;',
+                '  while (cur != null || !S.empty()) {',
+                '    while (cur != null) {   // 左链一路入栈',
+                '      S.push(cur);',
+                '      cur = cur.left;',
+                '    }',
+                '    TreeNode node = S.pop();',
+                '    visit(node);            // 左路到头才访问',
+                '    cur = node.right;      // 转右子树',
+                '  }',
+                '}',
+            ],
+        },
+        'bst-postorder': {
+            title: '后序遍历（非递归：tag 标记二次到顶）',
+            lines: [
+                'void postorder(TreeNode root) {',
+                '  // 栈元素 (node, tag)，tag 标记是否到过栈顶',
+                '  S.push({root, false});',
+                '  while (!S.empty()) {',
+                '    top = S.top();',
+                '    if (!top.tag) {         // 第一次到栈顶',
+                '      top.tag = true;      // 暂不访问',
+                '      if (top.node.right != null)',
+                '        S.push({右孩子, false});',
+                '      if (top.node.left != null)',
+                '        S.push({左孩子, false});',
+                '    } else {                // 第二次到栈顶',
+                '      node = S.pop();',
+                '      visit(node);          // 左右完成后访问',
+                '    }',
+                '  }',
+                '}',
+            ],
+        },
+        'heap-build': {
+            title: '筛选法建堆（自底向上，最小堆）',
+            lines: [
+                'void buildMinHeap(int a[], int n) {',
+                '  for (int i = n / 2 - 1; i >= 0; i--)',
+                '    siftDown(a, i, n);   // 最后非叶结点起',
+                '}',
+                'void siftDown(int a[], int i, int n) {',
+                '  while (2 * i + 1 < n) {',
+                '    small = 左右孩子中较小者;',
+                '    if (a[small] < a[i]) {',
+                '      swap(a[i], a[small]); // 下沉',
+                '      i = small;            // 继续向下',
+                '    } else break;           // 父小则就位',
+                '  }',
+                '}',
+            ],
+        },
+        'heap-insert': {
+            title: '堆插入（上滤：与父比较逐层上浮）',
+            lines: [
+                'void heapInsert(int a[], int n, int x) {',
+                '  a[n] = x;              // 放到堆尾',
+                '  int i = n; n++;',
+                '  while (i > 0) {',
+                '    int p = (i - 1) / 2; // 父结点下标',
+                '    if (a[i] < a[p]) {',
+                '      swap(a[i], a[p]);  // 比父小，上浮',
+                '      i = p;',
+                '    } else break;        // 不小于父，就位',
+                '  }',
+                '}',
+            ],
+        },
+        'hash-probe': {
+            title: '散列线性探测（Hi = (H+i) % m）',
+            lines: [
+                '// H(key) = key % m；冲突时线性探测',
+                'void insertHash(int HT[], int m, int key) {',
+                '  int h = key % m, i = 0;',
+                '  while (HT[(h + i) % m] != NULL)',
+                '    i++;                  // 被占，向后一格',
+                '  HT[(h + i) % m] = key;  // 空位落位',
+                '}',
+            ],
+        },
+        'topo-sort': {
+            title: '拓扑排序（反复取入度 0 顶点）',
+            lines: [
+                'void topoSort(Graph G) {',
+                '  // 初始化各顶点入度 indeg[]',
+                '  for (int i = 0; i < n; i++) {',
+                '    取入度为 0 且未输出的顶点 v;',
+                '    output(v);             // 输出 v',
+                '    for (v 的每条出边 (v, w))',
+                '      if (--indeg[w] == 0) w 可输出;',
+                '  }',
+                '  已输出数 < n ? 有回路 : 成功;',
+                '}',
+            ],
+        },
+        'dp-lcs': {
+            title: '最长公共子序列（双串填表）',
+            lines: [
+                '// dp[i][j]: X前i个与Y前j个的 LCS 长度',
+                'for (int i = 0; i <= m; i++)',
+                '  for (int j = 0; j <= n; j++) {',
+                '    if (i == 0 || j == 0)',
+                '      dp[i][j] = 0;            // 边界',
+                '    else if (X[i-1] == Y[j-1])',
+                '      dp[i][j] = dp[i-1][j-1] + 1; // ↖',
+                '    else',
+                '      dp[i][j] = max(dp[i-1][j],',
+                '                    dp[i][j-1]); // ↑←',
+                '  }',
+                '// LCS 长度 = dp[m][n]',
+            ],
+        },
+        'dp-knapsack': {
+            title: '0-1 背包（二维填表，选/不选取大）',
+            lines: [
+                '// dp[i][j]: 前 i 件、容量 j 的最大价值',
+                'for (j = 0; j <= W; j++) dp[0][j] = 0;',
+                'for (int i = 1; i <= n; i++)',
+                '  for (int j = 0; j <= W; j++) {',
+                '    dp[i][j] = dp[i-1][j];    // 不选',
+                '    if (j >= w[i]) {',
+                '      take = dp[i-1][j-w[i]] + v[i];',
+                '      if (take > dp[i][j])',
+                '        dp[i][j] = take;      // 选更优',
+                '    }',
+                '  }',
+                '// 最大价值 = dp[n][W]',
+            ],
+        },
+        'glist-build': {
+            title: '广义表建立（utype 三类结点 + tlink 链）',
+            lines: [
+                '// 表头 utype=0 / 原子=1 / 子表=2；tlink 同层链',
+                'GList create(元素序列 S) {',
+                '  建立本层表头结点 hp;',
+                '  tail = hp;',
+                '  for (S 中的每个元素 e) {',
+                '    if (e 是原子) {',
+                '      p = 新原子结点(utype=1, 值 e);',
+                '      tail->tlink = p; tail = p;',
+                '    } else {              // e 是子表',
+                '      p = 新子表结点(utype=2);',
+                '      tail->tlink = p; tail = p;',
+                '      p->hlink = create(e); // 递归建子表',
+                '    }',
+                '  }',
+                '  return hp;',
+                '}',
+            ],
+        },
+        'glist-depth': {
+            title: '广义表递归求深度（1 + max 子表深度）',
+            lines: [
+                'int depth(GList L) {',
+                '  if (L 是空表) return 1;    // 空表深度 1',
+                '  int m = 0;',
+                '  for (p = L 首元素; p; p = p->tlink) {',
+                '    if (p->utype == 原子)',
+                '      continue;             // 原子深度 0',
+                '    int d = depth(p->hlink); // 递归子表',
+                '    if (d > m) m = d;       // 记录最大',
+                '  }',
+                '  return m + 1;             // 本层+最深子表',
+                '}',
+            ],
+        },
+        'glist-print': {
+            title: '广义表递归打印（建立的逆过程）',
+            lines: [
+                'void printGList(GList L) {',
+                '  printf("(");',
+                '  for (p = L 首元素; p; p = p->tlink) {',
+                '    if (不是首个元素) printf(",");',
+                '    if (p->utype == 原子)',
+                '      printf(p->value);    // 输出原子值',
+                '    else',
+                '      printGList(p->hlink); // 递归进子表',
+                '  }',
+                '  printf(")");',
+                '}',
+            ],
+        },
+    };
+
     /* ══════════════════════ 通用工具 ══════════════════════ */
 
     function mkArrayStep(cells, pointers, description, extra) {
@@ -105,7 +366,8 @@ const CourseViz = (() => {
         const ptrs = () => { const p = {}; p[front] = 'front'; p[rear] = 'rear'; return p; };
 
         steps.push(mkArrayStep(view(), ptrs(),
-            `循环队列（容量 ${k}，牺牲一个单元法最多存 ${k - 1} 个）。队空：front == rear；队满：(rear+1) % ${k} == front`));
+            `循环队列（容量 ${k}，牺牲一个单元法最多存 ${k - 1} 个）。队空：front == rear；队满：(rear+1) % ${k} == front`,
+            { codeLine: 1 }));
 
         // 一组覆盖 判满/判空/回绕 的操作序列
         const ops = [
@@ -118,18 +380,21 @@ const CourseViz = (() => {
             if (o.op === 'E') {
                 if ((rear + 1) % k === front) {
                     steps.push(mkArrayStep(view(), ptrs(),
-                        `入队 ${o.v}：(rear+1) % ${k} = ${(rear + 1) % k} == front → 队满，入队失败（牺牲一格用于区分队空/队满）`));
+                        `入队 ${o.v}：(rear+1) % ${k} = ${(rear + 1) % k} == front → 队满，入队失败（牺牲一格用于区分队空/队满）`,
+                        { codeLine: 4 }));
                     continue;
                 }
                 que[rear] = o.v;
                 const at = rear;
                 rear = (rear + 1) % k;
                 steps.push(mkArrayStep(view(), ptrs(),
-                    `入队 ${o.v}：存入下标 ${at}，rear 后移 rear = (rear+1) % ${k} = ${rear}${rear === 0 ? '（回绕到开头！）' : ''}`));
+                    `入队 ${o.v}：存入下标 ${at}，rear 后移 rear = (rear+1) % ${k} = ${rear}${rear === 0 ? '（回绕到开头！）' : ''}`,
+                    { codeLine: 6 }));
             } else {
                 if (front === rear) {
                     steps.push(mkArrayStep(view(), ptrs(),
-                        `出队：front == rear → 队空，出队失败`));
+                        `出队：front == rear → 队空，出队失败`,
+                        { codeLine: 11 }));
                     continue;
                 }
                 const x = que[front];
@@ -139,12 +404,12 @@ const CourseViz = (() => {
                 seqOut.push(x);
                 steps.push(mkArrayStep(view(), ptrs(),
                     `出队：取走下标 ${at} 的 ${x}，front 后移 front = (front+1) % ${k} = ${front}${front === 0 ? '（回绕到开头！）' : ''}`,
-                    { seq: '出队序列: [' + seqOut.join(', ') + ']' }));
+                    { seq: '出队序列: [' + seqOut.join(', ') + ']', codeLine: 13 }));
             }
         }
         steps.push(mkArrayStep(view(), ptrs(),
             `演示结束。观察 front/rear 如何在数组上循环回绕：指针始终 = (旧值+1) % ${k}`,
-            { seq: '出队序列: [' + seqOut.join(', ') + ']' }));
+            { seq: '出队序列: [' + seqOut.join(', ') + ']', codeLine: 15 }));
         return steps;
     }
 
@@ -167,34 +432,35 @@ const CourseViz = (() => {
             description: description
         }, extra || {}));
 
-        snap('中缀 → 后缀：操作数直接输出；运算符按优先级入栈/弹栈；括号用于改变优先级。按课件双栈法（这里只需一个运算符栈）');
+        snap('中缀 → 后缀：操作数直接输出；运算符按优先级入栈/弹栈；括号用于改变优先级。按课件双栈法（这里只需一个运算符栈）',
+            { codeLine: 1 });
 
         let bad = null;
         for (i = 0; i < tokens.length; i++) {
             const ch = tokens[i];
             if (/[a-zA-Z0-9]/.test(ch)) {
                 output.push(ch);
-                snap(`操作数 '${ch}' 直接进入输出区`);
+                snap(`操作数 '${ch}' 直接进入输出区`, { codeLine: 4 });
             } else if (ch === '(') {
                 stack.push(ch);
-                snap(`'(' 入栈（左括号在栈内优先级最低，只配对右括号时才弹出）`);
+                snap(`'(' 入栈（左括号在栈内优先级最低，只配对右括号时才弹出）`, { codeLine: 6 });
             } else if (ch === ')') {
                 let popped = null;
                 while (stack.length && stack[stack.length - 1] !== '(') {
                     popped = stack.pop();
                     output.push(popped);
-                    snap(`')' 触发连续弹栈：'${popped}' 进入输出区`);
+                    snap(`')' 触发连续弹栈：'${popped}' 进入输出区`, { codeLine: 8 });
                 }
-                if (stack.length) { stack.pop(); snap(`弹出 '(' 丢弃（括号配对完成，括号本身不进入输出）`); }
+                if (stack.length) { stack.pop(); snap(`弹出 '(' 丢弃（括号配对完成，括号本身不进入输出）`, { codeLine: 9 }); }
                 else { bad = '括号不匹配：多余右括号'; break; }
             } else if (OP_PRIORITY[ch]) {
                 while (stack.length && OP_PRIORITY[stack[stack.length - 1]] && OP_PRIORITY[stack[stack.length - 1]] >= OP_PRIORITY[ch]) {
                     const p = stack.pop();
                     output.push(p);
-                    snap(`栈顶 '${p}' 优先级 ≥ '${ch}'，弹出进入输出区（同级从左到右计算）`);
+                    snap(`栈顶 '${p}' 优先级 ≥ '${ch}'，弹出进入输出区（同级从左到右计算）`, { codeLine: 12 });
                 }
                 stack.push(ch);
-                snap(`'${ch}' 入栈`);
+                snap(`'${ch}' 入栈`, { codeLine: 13 });
             } else {
                 bad = '存在无法识别的字符：' + ch;
                 break;
@@ -205,7 +471,7 @@ const CourseViz = (() => {
                 const p = stack.pop();
                 if (p === '(') { bad = '括号不匹配：多余左括号'; break; }
                 output.push(p);
-                snap(`输入结束，弹出栈中剩余运算符：'${p}' 进入输出区`);
+                snap(`输入结束，弹出栈中剩余运算符：'${p}' 进入输出区`, { codeLine: 16 });
             }
         }
         if (bad) {
@@ -229,16 +495,17 @@ const CourseViz = (() => {
         const steps = [];
         let moveNo = 0;
 
-        const snap = (from, to, disk, msg) => steps.push({
+        const snap = (from, to, disk, msg, codeLine) => steps.push({
             type_list: 'hanoi',
             pegs: clone(pegs),
             moved: disk || null,
             movedFrom: from,
             n: n,
+            codeLine: codeLine || 0,
             description: msg
         });
 
-        snap(null, null, null, `汉诺塔：把 ${n} 个盘子从 A 柱移到 C 柱。递归思路：先把上面 n-1 个移到 B（借助 C），再把最大盘移到 C，最后把 n-1 个从 B 移到 C（借助 A）。共需 2^n - 1 = ${Math.pow(2, n) - 1} 次移动`);
+        snap(null, null, null, `汉诺塔：把 ${n} 个盘子从 A 柱移到 C 柱。递归思路：先把上面 n-1 个移到 B（借助 C），再把最大盘移到 C，最后把 n-1 个从 B 移到 C（借助 A）。共需 2^n - 1 = ${Math.pow(2, n) - 1} 次移动`, 1);
 
         function solve(k, from, to, via, depth) {
             if (k === 0) return;
@@ -247,7 +514,7 @@ const CourseViz = (() => {
             pegs[to].push(disk);
             moveNo++;
             snap(from, to, disk,
-                `第 ${moveNo} 步：盘 ${disk} 从 ${names[from]} 移到 ${names[to]}（递归深度 ${depth}，这一层负责移动最大的 ${k} 个盘）`);
+                `第 ${moveNo} 步：盘 ${disk} 从 ${names[from]} 移到 ${names[to]}（递归深度 ${depth}，这一层负责移动最大的 ${k} 个盘）`, 4);
             solve(k - 1, via, to, from, depth + 1);
         }
         solve(n, 0, 2, 1, 0);
@@ -287,11 +554,12 @@ const CourseViz = (() => {
             if (extra) for (const k in extra) h[k] = extra[k];
             return h;
         };
-        const snap = (desc, extraHl) => steps.push({
+        const snap = (desc, extraHl, codeLine) => steps.push({
             type_list: 'ctree',
             root: clone(root),
             highlights: highlightVisited(extraHl),
             seq: '输出: [' + visited.map(v => v.label).join(', ') + ']',
+            codeLine: codeLine || 0,
             description: desc
         });
 
@@ -302,33 +570,33 @@ const CourseViz = (() => {
         if (order === 'pre') {
             const st = [];
             if (root) st.push(root);
-            snap(`非递归${orderNames.pre}：根${root ? ' ' + root.label : ''} 入栈${stackText(root ? [root.label] : [])}。规则：弹出即访问（根最先输出），访问后先压右孩子、再压左孩子`);
+            snap(`非递归${orderNames.pre}：根${root ? ' ' + root.label : ''} 入栈${stackText(root ? [root.label] : [])}。规则：弹出即访问（根最先输出），访问后先压右孩子、再压左孩子`, null, 3);
             while (st.length) {
                 const node = st.pop();
                 visited.push(node);
                 snap(`弹出栈顶 ${node.label} 并立即访问${stackText(st.map(s => s.label))}` + (node.left || node.right
                     ? `；随后先压右孩子${node.right ? ' ' + node.right.label : '（无）'}、再压左孩子${node.left ? ' ' + node.left.label : '（无）'}——栈后进先出，左子树会先被处理`
                     : '（叶结点，无孩子可压）'),
-                    { [node.id]: C.amber, ...(node.right ? { [node.right.id]: C.blue } : {}), ...(node.left ? { [node.left.id]: C.blue } : {}) });
+                    { [node.id]: C.amber, ...(node.right ? { [node.right.id]: C.blue } : {}), ...(node.left ? { [node.left.id]: C.blue } : {}) }, 6);
                 if (node.right) st.push(node.right);
                 if (node.left) st.push(node.left);
-                if (st.length) snap(`孩子已入栈，栈顶是 ${st[st.length - 1].label}，下一轮先处理它${stackText(st.map(s => s.label))}`);
+                if (st.length) snap(`孩子已入栈，栈顶是 ${st[st.length - 1].label}，下一轮先处理它${stackText(st.map(s => s.label))}`, null, 10);
             }
         } else if (order === 'in') {
             const st = [];
             let cur = root;
-            snap(`非递归${orderNames.in}：指针 cur 从根${root ? ' ' + root.label : ''}出发。规则：cur 沿左链一路入栈；左路走到底后弹出栈顶访问，再转入它的右子树，重复同样过程`);
+            snap(`非递归${orderNames.in}：指针 cur 从根${root ? ' ' + root.label : ''}出发。规则：cur 沿左链一路入栈；左路走到底后弹出栈顶访问，再转入它的右子树，重复同样过程`, null, 2);
             while (cur || st.length) {
                 while (cur) {
                     st.push(cur);
                     snap(`${cur.label} 入栈，cur 走向左孩子` + (cur.left ? ` ${cur.left.label}` : '（无左孩子，左路到头）') + stackText(st.map(s => s.label)),
-                        { [cur.id]: C.purple });
+                        { [cur.id]: C.purple }, 5);
                     cur = cur.left;
                 }
                 const node = st.pop();
                 visited.push(node);
                 snap(`左路到头，弹出栈顶 ${node.label} 并访问（中序：左子树全部完成后才轮到根）${stackText(st.map(s => s.label))}，cur 转向其右子树` + (node.right ? ` ${node.right.label}` : '（无右孩子，继续弹栈）'),
-                    { [node.id]: C.amber });
+                    { [node.id]: C.amber }, 9);
                 cur = node.right;
             }
         } else {
@@ -338,7 +606,7 @@ const CourseViz = (() => {
             const st = [];
             const stText = () => stackText(st.map(e => e.node.label + (e.tag ? '*' : '')));
             if (root) st.push({ node: root, tag: false });
-            snap(`非递归${orderNames.post}：栈元素带标记 tag（下方栈快照中 * 表示 tag=true）。第一次出现在栈顶：置 tag 并把右、左孩子压栈，本结点暂不出栈；第二次出现在栈顶（左右子树都完成）才弹出访问`);
+            snap(`非递归${orderNames.post}：栈元素带标记 tag（下方栈快照中 * 表示 tag=true）。第一次出现在栈顶：置 tag 并把右、左孩子压栈，本结点暂不出栈；第二次出现在栈顶（左右子树都完成）才弹出访问`, null, 3);
             while (st.length) {
                 const top = st[st.length - 1];
                 if (!top.tag) {
@@ -347,18 +615,20 @@ const CourseViz = (() => {
                     if (n.right) st.push({ node: n.right, tag: false });
                     if (n.left) st.push({ node: n.left, tag: false });
                     if (n.left || n.right) snap(`${n.label} 第一次到栈顶：暂不访问（后序要等左右子树全部完成），置 tag=true，先压右孩子${n.right ? ' ' + n.right.label : ''}、再压左孩子${n.left ? ' ' + n.left.label : ''}（左孩子在栈顶，左子树先完成）${stText()}`,
-                        { [n.id]: C.purple });
+                        { [n.id]: C.purple }, 7);
                 } else {
                     const node = st.pop().node;
                     visited.push(node);
                     snap(node.left || node.right
                         ? `${node.label} 第二次出现在栈顶（tag=true，左右子树已完成），弹出并访问${stText()}`
                         : `叶结点 ${node.label} 无孩子，弹出并直接访问${stText()}`,
-                        { [node.id]: C.amber });
+                        { [node.id]: C.amber }, 14);
                 }
             }
         }
-        snap(`${orderNames[order]} 完成！输出: [${visited.map(v => v.label).join(', ')}]`);
+        // 三个 order 的代码片段行数不同，收尾步骤各自取对应结束行
+        const endLine = { pre: 12, in: 12, post: 17 };
+        snap(`${orderNames[order]} 完成！输出: [${visited.map(v => v.label).join(', ')}]`, null, endLine[order] || 0);
         return steps;
     }
 
@@ -371,13 +641,15 @@ const CourseViz = (() => {
         const view = (hl) => a.map((v, i) => cell(v, hl && hl[i] ? hl[i] : C.blue));
 
         steps.push(mkArrayStep(view(), {},
-            `筛选法建堆（最小堆）：从最后一个非叶结点 i = ⌊n/2⌋ - 1 = ${Math.floor(n / 2) - 1} 开始，依次向前对每个结点执行 siftDown（数组即完全二叉树的层序存储）`));
+            `筛选法建堆（最小堆）：从最后一个非叶结点 i = ⌊n/2⌋ - 1 = ${Math.floor(n / 2) - 1} 开始，依次向前对每个结点执行 siftDown（数组即完全二叉树的层序存储）`,
+            { codeLine: 2 }));
 
         let compares = 0, swaps = 0;
         for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
             let cur = i;
             steps.push(mkArrayStep(view({ [cur]: C.amber }), { [cur]: 'siftDown' },
-                `对下标 ${cur}（值 ${a[cur]}）执行 siftDown：与左右孩子中较小者比较`));
+                `对下标 ${cur}（值 ${a[cur]}）执行 siftDown：与左右孩子中较小者比较`,
+                { codeLine: 3 }));
             while (2 * cur + 1 < n) {
                 const l = 2 * cur + 1, r = l + 1;
                 let small = l;
@@ -385,21 +657,25 @@ const CourseViz = (() => {
                 compares++;
                 if (a[small] < a[cur]) {
                     steps.push(mkArrayStep(view({ [cur]: C.amber, [small]: C.red }), { [cur]: '父', [small]: '较小孩子' },
-                        `孩子 ${a[small]}（下标 ${small}）< 父 ${a[cur]}（下标 ${cur}），交换（第 ${compares} 次比较）`));
+                        `孩子 ${a[small]}（下标 ${small}）< 父 ${a[cur]}（下标 ${cur}），交换（第 ${compares} 次比较）`,
+                        { codeLine: 9 }));
                     const t = a[cur]; a[cur] = a[small]; a[small] = t;
                     swaps++;
                     cur = small;
                     steps.push(mkArrayStep(view({ [cur]: C.amber }), { [cur]: '继续下沉' },
-                        `交换后继续从下标 ${cur} 向下筛查`));
+                        `交换后继续从下标 ${cur} 向下筛查`,
+                        { codeLine: 10 }));
                 } else {
                     steps.push(mkArrayStep(view({ [cur]: C.green }), { [cur]: '已就位' },
-                        `父 ${a[cur]} ≤ 较小孩子 ${a[small]}，无需调整，siftDown 结束`));
+                        `父 ${a[cur]} ≤ 较小孩子 ${a[small]}，无需调整，siftDown 结束`,
+                        { codeLine: 11 }));
                     break;
                 }
             }
         }
         steps.push(mkArrayStep(view({ 0: C.green }), {},
-            `建堆完成！共 ${compares} 次比较、${swaps} 次交换。筛选法建堆总时间 O(n)（逐个插入建堆为 O(n log n)）`));
+            `建堆完成！共 ${compares} 次比较、${swaps} 次交换。筛选法建堆总时间 O(n)（逐个插入建堆为 O(n log n)）`,
+            { codeLine: 13 }));
         return steps;
     }
 
@@ -427,23 +703,27 @@ const CourseViz = (() => {
         const view = (hl) => a.map((v, i) => cell(v, hl && hl[i] ? hl[i] : C.blue));
 
         steps.push(mkArrayStep(view({ [n - 1]: C.amber }), { [n - 1]: '新元素' },
-            `堆插入（上滤）：前 ${n0} 个元素已构成最小堆（任一父结点 ≤ 孩子）。新元素 ${val} 先放到堆尾下标 ${n - 1}，再与父结点（下标 ⌊(i-1)/2⌋）比较：比父小就逐层上浮`));
+            `堆插入（上滤）：前 ${n0} 个元素已构成最小堆（任一父结点 ≤ 孩子）。新元素 ${val} 先放到堆尾下标 ${n - 1}，再与父结点（下标 ⌊(i-1)/2⌋）比较：比父小就逐层上浮`,
+            { codeLine: 2 }));
         let i = n - 1;
         while (i > 0) {
             const p = Math.floor((i - 1) / 2);
             if (a[i] < a[p]) {
                 const t = a[i]; a[i] = a[p]; a[p] = t;
                 steps.push(mkArrayStep(view({ [i]: C.green, [p]: C.red }), { [i]: '↑', [p]: '↑' },
-                    `${t} < 父 ${a[i]}，交换上浮：${t} 现在位于下标 ${p}`));
+                    `${t} < 父 ${a[i]}，交换上浮：${t} 现在位于下标 ${p}`,
+                    { codeLine: 7 }));
                 i = p;
             } else {
                 steps.push(mkArrayStep(view({ [i]: C.green, [p]: C.blue }), { [i]: '新位置' },
-                    `${a[i]} ≥ 父 ${a[p]}，不再上浮，上滤结束`));
+                    `${a[i]} ≥ 父 ${a[p]}，不再上浮，上滤结束`,
+                    { codeLine: 9 }));
                 break;
             }
         }
         steps.push(mkArrayStep(a.map(v => cell(v, C.green)), {},
-            `插入完成，最小堆性质保持。上滤最多走树高 ⌈log₂n⌉ 步，时间 O(log n)`));
+            `插入完成，最小堆性质保持。上滤最多走树高 ⌈log₂n⌉ 步，时间 O(log n)`,
+            { codeLine: 11 }));
         return steps;
     }
 
@@ -465,7 +745,9 @@ const CourseViz = (() => {
             const w = wCache.get(nd.id) || 1;
             nodes.push({ nd: nd, depth: depth, x: xLeft + w / 2 });
             if (nd.left) { edges.push([nd.id, nd.left.id]); assign(nd.left, depth + 1, xLeft); }
-            if (nd.right) { edges.push([nd.id, nd.right.id]); assign(nd.right, depth + 1, xLeft + (wCache.get(nd.left) || 1)); }
+            // 右子树起点 = xLeft + 左子树宽（宽表按 id 存取——传结点对象永远查不到，
+            // 兜底 1 会让宽左子树与右子树重叠，哈夫曼/AVL 上曾出现两结点完全重合）
+            if (nd.right) { edges.push([nd.id, nd.right.id]); assign(nd.right, depth + 1, xLeft + (nd.left ? (wCache.get(nd.left.id) || 1) : 0)); }
         }
         assign(root, 0, 0);
         return { nodes: nodes, edges: edges };
@@ -477,19 +759,27 @@ const CourseViz = (() => {
         const pad = { t: 46, b: 56, l: 30, r: 30 };
         const maxDepth = Math.max(...layout.nodes.map(n => n.depth), 0);
         const totalW = Math.max(...layout.nodes.map(n => n.x)) + 0.5;
+        // 层距决定半径上限：退化单链树全部结点纵向下沉到各自层，
+        // 若只按宽度定半径，矮画布上相邻层圆会相切重叠（截图反馈的问题）
+        const levelH = (renderer.height - pad.t - pad.b) / Math.max(maxDepth, 1);
+        const r = Math.min(
+            24,
+            Math.max(12, (renderer.width - 60) / Math.max(layout.nodes.length, 1) / 2.2),
+            Math.max(9, levelH * 0.42)
+        );
         const pos = {};
         for (const n of layout.nodes) pos[n.nd.id] = { x: pad.l + (n.x / totalW) * (renderer.width - pad.l - pad.r), y: pad.t + (n.depth / Math.max(maxDepth, 1)) * (renderer.height - pad.t - pad.b) };
         for (const [fa, ch] of layout.edges) {
-            if (pos[fa] && pos[ch]) renderer.drawLine(pos[fa].x, pos[fa].y + 14, pos[ch].x, pos[ch].y - 14, '#cccccc', 2);
+            // 连线端点跟随半径（不再写死 14px），小圆时线头不会露在圆外
+            if (pos[fa] && pos[ch]) renderer.drawLine(pos[fa].x, pos[fa].y + r * 0.6, pos[ch].x, pos[ch].y - r * 0.6, '#cccccc', 2);
         }
-        const r = Math.min(24, Math.max(12, (renderer.width - 60) / Math.max(layout.nodes.length, 1) / 2.2));
         for (const n of layout.nodes) {
             const p = pos[n.nd.id];
             const color = (step.highlights && step.highlights[n.nd.id]) || C.blue;
             renderer.drawCircle(p.x, p.y, r, color, n.nd.label);
             if (n.nd.sub) renderer.drawText(n.nd.sub, p.x, p.y + r + 9, C.sub, 10);
         }
-        if (step.seq) renderer.drawText(step.seq, renderer.width / 2, renderer.height - 22, '#555555', 13);
+        if (step.seq) renderer.drawText(step.seq, renderer.width / 2, renderer.height - 22, '#555555', 20);
     }
 
     function huffman(weights) {
@@ -606,26 +896,31 @@ const CourseViz = (() => {
         const view = (hl) => table.map((v, i) => v === null ? cell(' ', C.empty) : cell(v, hl && hl[i] ? hl[i] : C.blue));
 
         steps.push(mkArrayStep(view(), {},
-            `散列表（表长 m=${m}，散列函数 H(key) = key % ${m}），冲突处理：线性探测 Hi = (H(key) + di) % m，di = 0,1,2,…`));
+            `散列表（表长 m=${m}，散列函数 H(key) = key % ${m}），冲突处理：线性探测 Hi = (H(key) + di) % m，di = 0,1,2,…`,
+            { codeLine: 1 }));
 
         for (const key of keys.slice(0, 9)) {
             const h = ((key % m) + m) % m;
             let probes = 0, pos = h;
             steps.push(mkArrayStep(view(), { [h]: 'H(key)' },
-                `插入 ${key}：H(${key}) = ${key} % ${m} = ${h}，先试探下标 ${h}`));
+                `插入 ${key}：H(${key}) = ${key} % ${m} = ${h}，先试探下标 ${h}`,
+                { codeLine: 3 }));
             while (table[pos] !== null) {
                 probes++; totalProbes++;
                 pos = (h + probes) % m;
                 steps.push(mkArrayStep(view({ [pos]: C.amber }), { [pos]: '探测' + probes },
-                    `下标 ${(h + probes - 1) % m} 已被 ${table[(h + probes - 1) % m]} 占用 → 线性探测第 ${probes} 次：(${h} + ${probes}) % ${m} = ${pos}`));
+                    `下标 ${(h + probes - 1) % m} 已被 ${table[(h + probes - 1) % m]} 占用 → 线性探测第 ${probes} 次：(${h} + ${probes}) % ${m} = ${pos}`,
+                    { codeLine: 5 }));
             }
             table[pos] = key;
             steps.push(mkArrayStep(view({ [pos]: C.green }), { [pos]: '落位' },
-                `${key} 存入下标 ${pos}${probes > 0 ? `（共探测 ${probes + 1} 次，产生堆积）` : '（一步到位）'}`));
+                `${key} 存入下标 ${pos}${probes > 0 ? `（共探测 ${probes + 1} 次，产生堆积）` : '（一步到位）'}`,
+                { codeLine: 6 }));
         }
         const alpha = (keys.slice(0, 9).length / m).toFixed(2);
         steps.push(mkArrayStep(view(), {},
-            `全部插入完成，装填因子 α = ${keys.slice(0, 9).length}/${m} = ${alpha}。α 越大冲突越频繁；线性探测易产生"堆积（聚集）"`));
+            `全部插入完成，装填因子 α = ${keys.slice(0, 9).length}/${m} = ${alpha}。α 越大冲突越频繁；线性探测易产生"堆积（聚集）"`,
+            { codeLine: 7 }));
         return steps;
     }
 
@@ -651,7 +946,7 @@ const CourseViz = (() => {
 
         steps.push(mkArrayStep(view(), {},
             `拓扑排序（AOV 网，${n} 个顶点 / ${edges.length} 条边）：格子为各顶点入度。每轮取入度为 0 的顶点输出，并把它发出的边全部删除`,
-            { seq: '拓扑序列: []' }));
+            { seq: '拓扑序列: []', codeLine: 2 }));
 
         for (let round = 0; round < n; round++) {
             let v = -1;
@@ -659,23 +954,23 @@ const CourseViz = (() => {
             if (v === -1) {
                 steps.push(mkArrayStep(view({}, order), {},
                     `✗ 没有入度为 0 的顶点 → 图中存在回路，拓扑排序失败（输出 -1）`,
-                    { seq: '拓扑序列: [' + order.join(', ') + ']' }));
+                    { seq: '拓扑序列: [' + order.join(', ') + ']', codeLine: 9 }));
                 return steps;
             }
             order.push(v);
             steps.push(mkArrayStep(view({ [v]: C.green }, order), { [v - 1]: '入度0→输出' },
                 `顶点 ${v} 入度为 0，输出（当前序列: ${order.join(' → ')}），删除它的所有出边`,
-                { seq: '拓扑序列: [' + order.join(', ') + ']' }));
+                { seq: '拓扑序列: [' + order.join(', ') + ']', codeLine: 5 }));
             for (const w of adj[v]) {
                 indeg[w]--;
                 steps.push(mkArrayStep(view({ [w]: C.amber }, order), { [w - 1]: '入度-1' },
                     `删除边 ${v}→${w}：${w} 的入度变为 ${indeg[w]}${indeg[w] === 0 ? '（变为 0，可输出）' : ''}`,
-                    { seq: '拓扑序列: [' + order.join(', ') + ']' }));
+                    { seq: '拓扑序列: [' + order.join(', ') + ']', codeLine: 7 }));
             }
         }
         steps.push(mkArrayStep(view({}, order), {},
             `拓扑排序完成：${order.join(' → ')}。时间复杂度 O(n + e)`,
-            { seq: '拓扑序列: [' + order.join(', ') + ']' }));
+            { seq: '拓扑序列: [' + order.join(', ') + ']', codeLine: 10 }));
         return steps;
     }
 
@@ -686,7 +981,7 @@ const CourseViz = (() => {
         const m = X.length, n = Y.length;
         const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(null));
         const steps = [];
-        const snap = (cur, desc, kind) => steps.push({
+        const snap = (cur, desc, kind, codeLine) => steps.push({
             type_list: 'dp',
             rowHeaders: [''].concat(X.split('')),
             colHeaders: [''].concat(Y.split('')),
@@ -694,23 +989,24 @@ const CourseViz = (() => {
             cur: cur,
             title: `LCS("${X}", "${Y}") — dp[i][j] = X 前 i 个字符与 Y 前 j 个字符的最长公共子序列长度`,
             description: desc,
-            kind: kind || ''
+            kind: kind || '',
+            codeLine: codeLine || 0
         });
         for (let i = 0; i <= m; i++) for (let j = 0; j <= n; j++) dp[i][j] = (i === 0 || j === 0) ? 0 : null;
-        snap([0, 0], '边界：dp[0][j] = dp[i][0] = 0（空串与任何串的 LCS 为 0），其余格子待逐个递推', 'border');
+        snap([0, 0], '边界：dp[0][j] = dp[i][0] = 0（空串与任何串的 LCS 为 0），其余格子待逐个递推', 'border', 5);
 
         for (let i = 1; i <= m; i++) {
             for (let j = 1; j <= n; j++) {
                 if (X[i - 1] === Y[j - 1]) {
                     dp[i][j] = dp[i - 1][j - 1] + 1;
-                    snap([i, j], `X[${i - 1}]='${X[i - 1]}' = Y[${j - 1}]='${Y[j - 1]}' ✓ 相等 → dp[${i}][${j}] = 左上 dp[${i - 1}][${j - 1}] + 1 = ${dp[i][j]}（↖）`, 'match');
+                    snap([i, j], `X[${i - 1}]='${X[i - 1]}' = Y[${j - 1}]='${Y[j - 1]}' ✓ 相等 → dp[${i}][${j}] = 左上 dp[${i - 1}][${j - 1}] + 1 = ${dp[i][j]}（↖）`, 'match', 7);
                 } else {
                     dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-                    snap([i, j], `'${X[i - 1]}' ≠ '${Y[j - 1]}' → dp[${i}][${j}] = max(上方 ${dp[i - 1][j]}, 左方 ${dp[i][j - 1]}) = ${dp[i][j]}（${dp[i - 1][j] >= dp[i][j - 1] ? '↑' : '←'}）`, 'mismatch');
+                    snap([i, j], `'${X[i - 1]}' ≠ '${Y[j - 1]}' → dp[${i}][${j}] = max(上方 ${dp[i - 1][j]}, 左方 ${dp[i][j - 1]}) = ${dp[i][j]}（${dp[i - 1][j] >= dp[i][j - 1] ? '↑' : '←'}）`, 'mismatch', 9);
                 }
             }
         }
-        snap([m, n], `填表完成！LCS 长度 = dp[${m}][${n}] = ${dp[m][n]}。时间/空间 O(mn)；从右下角沿箭头回溯可还原子序列本身`, 'done');
+        snap([m, n], `填表完成！LCS 长度 = dp[${m}][${n}] = ${dp[m][n]}。时间/空间 O(mn)；从右下角沿箭头回溯可还原子序列本身`, 'done', 12);
         return steps;
     }
 
@@ -720,7 +1016,7 @@ const CourseViz = (() => {
         const n = items.length;
         const dp = Array.from({ length: n + 1 }, () => new Array(W + 1).fill(null));
         const steps = [];
-        const snap = (cur, desc, kind) => steps.push({
+        const snap = (cur, desc, kind, codeLine) => steps.push({
             type_list: 'dp',
             rowHeaders: ['前0件'].concat(items.map((it, i) => `前${i + 1}件(w${it.w},v${it.v})`)),
             colHeaders: Array.from({ length: W + 1 }, (_, j) => String(j)),
@@ -728,23 +1024,24 @@ const CourseViz = (() => {
             cur: cur,
             title: `0-1 背包：容量 W=${W}，物品 ${items.map(it => '(w' + it.w + ',v' + it.v + ')').join(' ')}`,
             description: desc,
-            kind: kind || ''
+            kind: kind || '',
+            codeLine: codeLine || 0
         });
         for (let i = 0; i <= n; i++) for (let j = 0; j <= W; j++) dp[i][j] = (i === 0 || j === 0) ? 0 : null;
-        snap([0, 0], `边界：dp[0][j] = dp[i][0] = 0。递推 dp[i][j] = max(不选第 i 件 dp[i-1][j], 能装则 选它 dp[i-1][j-wᵢ]+vᵢ)`, 'border');
+        snap([0, 0], `边界：dp[0][j] = dp[i][0] = 0。递推 dp[i][j] = max(不选第 i 件 dp[i-1][j], 能装则 选它 dp[i-1][j-wᵢ]+vᵢ)`, 'border', 2);
         for (let i = 1; i <= n; i++) {
             for (let j = 0; j <= W; j++) {
                 dp[i][j] = dp[i - 1][j];
                 if (j >= items[i - 1].w) {
                     const take = dp[i - 1][j - items[i - 1].w] + items[i - 1].v;
                     if (take > dp[i][j]) dp[i][j] = take;
-                    snap([i, j], `dp[${i}][${j}] = max(不选: ${dp[i - 1][j]}, 选(w=${items[i - 1].w}): dp[${i - 1}][${j - items[i - 1].w}]+${items[i - 1].v}=${take}) = ${dp[i][j]}`);
+                    snap([i, j], `dp[${i}][${j}] = max(不选: ${dp[i - 1][j]}, 选(w=${items[i - 1].w}): dp[${i - 1}][${j - items[i - 1].w}]+${items[i - 1].v}=${take}) = ${dp[i][j]}`, '', 8);
                 } else {
-                    snap([i, j], `容量 ${j} < 重量 ${items[i - 1].w}，装不下第 ${i} 件 → dp[${i}][${j}] = dp[${i - 1}][${j}] = ${dp[i][j]}`);
+                    snap([i, j], `容量 ${j} < 重量 ${items[i - 1].w}，装不下第 ${i} 件 → dp[${i}][${j}] = dp[${i - 1}][${j}] = ${dp[i][j]}`, '', 5);
                 }
             }
         }
-        snap([n, W], `填表完成！最大价值 = dp[${n}][${W}] = ${dp[n][W]}。一维滚动数组优化时容量必须倒序枚举（防止同一物品被选多次）`, 'done');
+        snap([n, W], `填表完成！最大价值 = dp[${n}][${W}] = ${dp[n][W]}。一维滚动数组优化时容量必须倒序枚举（防止同一物品被选多次）`, 'done', 12);
         return steps;
     }
 
@@ -965,9 +1262,9 @@ const CourseViz = (() => {
         const parsed = glTryParse(str, steps);
         if (!parsed) return steps;
         const root = glNewHeader();
-        const snap = (desc, hl) => steps.push({ type_list: 'glist', root: glClone(root), highlights: hl || {}, seq: null, description: desc });
+        const snap = (desc, hl, codeLine) => steps.push({ type_list: 'glist', root: glClone(root), highlights: hl || {}, seq: null, codeLine: codeLine || 0, description: desc });
 
-        snap(`广义表 ${glSpecToStr(parsed.spec)}：开始建立存储结构。规则：每个表先建一个表头结点（utype=0，info 存引用计数 ref），元素结点用 tlink 连成同层链`);
+        snap(`广义表 ${glSpecToStr(parsed.spec)}：开始建立存储结构。规则：每个表先建一个表头结点（utype=0，info 存引用计数 ref），元素结点用 tlink 连成同层链`, null, 1);
         (function fill(header, arr) {
             let tail = header;
             arr.forEach((el, idx) => {
@@ -977,18 +1274,18 @@ const CourseViz = (() => {
                     const nd = glNewSub(h2);
                     tail.tlink = nd; tail = nd;
                     snap(`读入第 ${idx + 1} 个元素——子表 ${glSpecToStr(el)}：先建子表结点（utype=2，紫色），hlink 指向新表头，tlink 挂入本层链${first ? '（表头的 tlink 指向它）' : ''}`,
-                        { [nd.id]: C.amber, [h2.id]: C.purple });
+                        { [nd.id]: C.amber, [h2.id]: C.purple }, 11);
                     fill(h2, el);
-                    snap(`子表 ${glSpecToStr(el)} 建立完毕，返回外层继续读入`, { [nd.id]: C.green });
+                    snap(`子表 ${glSpecToStr(el)} 建立完毕，返回外层继续读入`, { [nd.id]: C.green }, 13);
                 } else {
                     const nd = glNewAtom(el);
                     tail.tlink = nd; tail = nd;
                     snap(`读入第 ${idx + 1} 个元素——原子 ${el}：原子结点（utype=1，info 存值），接到同层链尾${first ? '（表头的 tlink 指向它）' : '（前一结点的 tlink 指向它）'}`,
-                        { [nd.id]: C.amber });
+                        { [nd.id]: C.amber }, 8);
                 }
             });
         })(root, parsed.spec);
-        snap(`建立完成！长度 = ${parsed.spec.length}（最外层元素个数），深度 = ${glDepthOf(root)}（括号最大重数）。表头 utype=0 / 原子 utype=1 / 子表 utype=2；tlink 连同层后继，hlink 进子表`);
+        snap(`建立完成！长度 = ${parsed.spec.length}（最外层元素个数），深度 = ${glDepthOf(root)}（括号最大重数）。表头 utype=0 / 原子 utype=1 / 子表 utype=2；tlink 连同层后继，hlink 进子表`, null, 15);
         return steps;
     }
 
@@ -1042,37 +1339,37 @@ const CourseViz = (() => {
         const parsed = glTryParse(str, steps);
         if (!parsed) return steps;
         const root = glBuildQuiet(parsed.spec);
-        const snap = (desc, hl) => steps.push({ type_list: 'glist', root: glClone(root), highlights: hl || {}, seq: null, description: desc });
+        const snap = (desc, hl, codeLine) => steps.push({ type_list: 'glist', root: glClone(root), highlights: hl || {}, seq: null, codeLine: codeLine || 0, description: desc });
 
-        snap(`递归求深度。定义：Depth(原子) = 0；Depth(空表 ()) = 1；Depth(表) = 1 + max{各子表深度}（即括号的最大重数）。现在求 L = ${glHeaderToStr(root)} 的深度`);
+        snap(`递归求深度。定义：Depth(原子) = 0；Depth(空表 ()) = 1；Depth(表) = 1 + max{各子表深度}（即括号的最大重数）。现在求 L = ${glHeaderToStr(root)} 的深度`, null, 1);
         function walk(header, name) {
             if (!header.tlink) {
-                snap(`表 ${name} 是空表：直接返回深度 1（递归出口）`, { [header.id]: C.green });
+                snap(`表 ${name} 是空表：直接返回深度 1（递归出口）`, { [header.id]: C.green }, 2);
                 return 1;
             }
-            snap(`进入表 ${name}：沿 tlink 扫描顶层元素，m 记录子表最大深度（初值 0）`, { [header.id]: C.purple });
+            snap(`进入表 ${name}：沿 tlink 扫描顶层元素，m 记录子表最大深度（初值 0）`, { [header.id]: C.purple }, 4);
             let m = 0, k = 0;
             for (let p = header.tlink; p; p = p.tlink) {
                 k++;
                 if (p.utype === 1) {
-                    snap(`第 ${k} 个元素是原子 ${p.value}：深度 0，m 保持 ${m}`, { [p.id]: C.amber });
+                    snap(`第 ${k} 个元素是原子 ${p.value}：深度 0，m 保持 ${m}`, { [p.id]: C.amber }, 6);
                 } else {
                     const sub = glHeaderToStr(p.hlink);
-                    snap(`第 ${k} 个元素是子表 ${sub}：沿 hlink 递归求其深度`, { [p.id]: C.purple, [p.hlink.id]: C.purple });
+                    snap(`第 ${k} 个元素是子表 ${sub}：沿 hlink 递归求其深度`, { [p.id]: C.purple, [p.hlink.id]: C.purple }, 7);
                     const d = walk(p.hlink, sub);
                     if (d > m) {
                         m = d;
-                        snap(`子表 ${sub} 深度 = ${d} > 当前 m，更新 m = ${m}`, { [p.id]: C.green });
+                        snap(`子表 ${sub} 深度 = ${d} > 当前 m，更新 m = ${m}`, { [p.id]: C.green }, 8);
                     } else {
-                        snap(`子表 ${sub} 深度 = ${d} ≤ 当前 m = ${m}，不更新`, { [p.id]: C.blue });
+                        snap(`子表 ${sub} 深度 = ${d} ≤ 当前 m = ${m}，不更新`, { [p.id]: C.blue }, 8);
                     }
                 }
             }
-            snap(`表 ${name} 扫描完毕：深度 = m + 1 = ${m + 1}（本层括号 + 最深子表）`, { [header.id]: C.green });
+            snap(`表 ${name} 扫描完毕：深度 = m + 1 = ${m + 1}（本层括号 + 最深子表）`, { [header.id]: C.green }, 10);
             return m + 1;
         }
         const d = walk(root, glHeaderToStr(root));
-        snap(`计算完成：Depth(L) = ${d}。整棵结构每个结点只访问一次，时间 O(结点数)，递归栈深 O(表的深度)`);
+        snap(`计算完成：Depth(L) = ${d}。整棵结构每个结点只访问一次，时间 O(结点数)，递归栈深 O(表的深度)`, null, 11);
         return steps;
     }
 
@@ -1083,13 +1380,13 @@ const CourseViz = (() => {
         if (!parsed) return steps;
         const root = glBuildQuiet(parsed.spec);
         let out = '';
-        const snap = (desc, hl) => steps.push({ type_list: 'glist', root: glClone(root), highlights: hl || {}, seq: '输出: ' + out, description: desc });
+        const snap = (desc, hl, codeLine) => steps.push({ type_list: 'glist', root: glClone(root), highlights: hl || {}, seq: '输出: ' + out, codeLine: codeLine || 0, description: desc });
 
-        snap(`递归打印 L = ${glHeaderToStr(root)}：进入子表输出 '('；遇原子输出其值；遇子表结点递归进入；离开子表输出 ')'；元素间补 ','`);
+        snap(`递归打印 L = ${glHeaderToStr(root)}：进入子表输出 '('；遇原子输出其值；遇子表结点递归进入；离开子表输出 ')'；元素间补 ','`, null, 1);
         (function pH(header) {
             const empty = !header.tlink;
             out += '(';
-            snap(empty ? `进入${header === root ? '' : '子'}表：输出 '('（本层没有任何元素——空表）` : `进入${header === root ? '' : '子'}表：输出 '('`, { [header.id]: C.purple });
+            snap(empty ? `进入${header === root ? '' : '子'}表：输出 '('（本层没有任何元素——空表）` : `进入${header === root ? '' : '子'}表：输出 '('`, { [header.id]: C.purple }, 2);
             let first = true;
             for (let p = header.tlink; p; p = p.tlink) {
                 const sep = first ? '' : `（前面已有元素，先补 ','）`;
@@ -1097,16 +1394,16 @@ const CourseViz = (() => {
                 first = false;
                 if (p.utype === 1) {
                     out += String(p.value);
-                    snap(`原子 ${p.value}${sep}：输出 '${p.value}'`, { [p.id]: C.amber });
+                    snap(`原子 ${p.value}${sep}：输出 '${p.value}'`, { [p.id]: C.amber }, 6);
                 } else {
-                    snap(`子表结点${sep}：沿 hlink 递归进入`, { [p.id]: C.purple, [p.hlink.id]: C.purple });
+                    snap(`子表结点${sep}：沿 hlink 递归进入`, { [p.id]: C.purple, [p.hlink.id]: C.purple }, 8);
                     pH(p.hlink);
                 }
             }
             out += ')';
-            snap(`本层扫描结束：输出 ')'`, { [header.id]: C.green });
+            snap(`本层扫描结束：输出 ')'`, { [header.id]: C.green }, 10);
         })(root);
-        snap(`打印完成：${out} —— 与书写形式完全一致（打印是"建立"的逆过程）。时间 O(结点数)`);
+        snap(`打印完成：${out} —— 与书写形式完全一致（打印是"建立"的逆过程）。时间 O(结点数)`, null, 11);
         return steps;
     }
 
@@ -1146,7 +1443,7 @@ const CourseViz = (() => {
             }
         }
         if (step.seq) {
-            renderer.drawText(step.seq, w / 2, h - 24, '#555555', 13);
+            renderer.drawText(step.seq, w / 2, h - 24, '#555555', 20);
         }
     }
 
@@ -1414,9 +1711,9 @@ const CourseViz = (() => {
             }
         }
 
-        if (step.seq) renderer.drawText(step.seq, W / 2, H - 16, '#555555', 13);
+        if (step.seq) renderer.drawText(step.seq, W / 2, H - 16, '#555555', 20);
         renderer.drawText('头=表头结点(utype=0) · 1|值=原子(utype=1) · 2|▼=子表(utype=2) · 横箭头 tlink · 紫竖箭头 hlink',
-            W / 2, H - 34, C.sub, 10);
+            W / 2, H - 50, C.sub, 18);
     }
 
     /** 统一渲染入口 */
@@ -1459,6 +1756,7 @@ const CourseViz = (() => {
         glistDepth,
         glistPrint,
         glistValidate,
+        code: CODE,          // 供 vizView 汇总为右侧代码面板的片段库
     };
 })();
 

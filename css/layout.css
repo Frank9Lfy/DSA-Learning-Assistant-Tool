@@ -429,6 +429,21 @@
   min-height: 0;
 }
 
+/* 画布 + 代码面板并排行（vizView._injectCodePanel 动态注入） */
+.viz-main {
+  flex: 1;
+  display: flex;
+  gap: var(--space-sm);
+  min-height: 0;
+}
+
+.viz-canvas-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 #viz-canvas {
   flex: 1;
   background: var(--bg-card);
@@ -436,6 +451,79 @@
   border-radius: var(--border-radius-lg);
   cursor: crosshair;
   box-shadow: var(--shadow-sm);
+}
+
+/* 右侧代码面板：复用教学模块 CodeWalkthrough 的 .cw-* 样式 */
+.viz-code-panel {
+  display: none;
+  flex-direction: column;
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.viz-code-panel.visible {
+  display: flex;
+}
+
+.viz-code-head {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz-code-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.viz-code-body .cw-wrap {
+  border: none;
+  border-radius: 0;
+}
+
+.viz-code-body .cw-note-panel {
+  display: none;   /* 可视化场景不使用行注释面板 */
+}
+
+.viz-code-empty {
+  padding: 28px 16px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  line-height: 1.9;
+}
+
+.viz-code-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.viz-code-toggle input {
+  cursor: pointer;
+}
+
+/* 窄屏：画布优先，代码面板自动让位（画布过窄时多个渲染器会拥挤） */
+@media (max-width: 1080px) {
+  .viz-code-panel.visible {
+    display: none;
+  }
 }
 
 .viz-description {

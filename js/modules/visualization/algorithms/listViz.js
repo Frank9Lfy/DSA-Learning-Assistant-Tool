@@ -36,6 +36,37 @@
         label: '#888888'      // head / 下标标签
     };
 
+    /* ── 右侧代码面板配套片段（与生成器步骤严格同构） ── */
+    const CODE = {
+        'list-insert': {
+            title: '单链表插入（先接后继，再改前驱）',
+            lines: [
+                'void insert(LinkList L, int pos, int val) {',
+                '  s = new LNode;',
+                '  s->data = val;',
+                '  p = L->head;',
+                '  for (int k = 0; k < pos; k++)',
+                '    p = p->next;',
+                '  s->next = p->next;',
+                '  p->next = s;',
+                '}',
+            ],
+        },
+        'list-delete': {
+            title: '单链表删除（前驱越过待删结点）',
+            lines: [
+                'void delete(LinkList L, int pos) {',
+                '  p = L->head;',
+                '  for (int k = 0; k < pos - 1; k++)',
+                '    p = p->next;',
+                '  q = p->next;',
+                '  p->next = q->next;',
+                '  free(q);',
+                '}',
+            ],
+        },
+    };
+
     /** 生成 0..len-1 的顺序链 next 数组，尾结点为 -1 */
     function chainNext(len) {
         return Array.from({ length: len }, (_, i) => (i + 1 < len ? i + 1 : -1));
@@ -79,11 +110,13 @@
             const nx = chainNext(n);
 
             steps.push(mkStep('insert', list, nx, {
+                codeLine: 1,
                 description: `单链表插入：在位置 ${pos} 插入值 ${val}，当前长度 ${n}（顺序：先接新结点的指针，再改前驱的指针）`
             }));
 
             if (pos < 0 || pos > n) {
                 steps.push(mkStep('insert', list, nx, {
+                    codeLine: 1,
                     description: `位置 ${pos} 非法！合法范围为 0 ~ ${n}，插入取消`
                 }));
                 return steps;
@@ -97,6 +130,7 @@
                     highlights: { [i]: COLORS.active },
                     arrowHighlights: ah,
                     pointLabels: { [i]: { text: 'p', color: COLORS.active } },
+                    codeLine: 6,
                     description: `工作指针 p 沿 next 链移动到结点 ${i}（值 ${list[i]}）`
                 }));
             }
@@ -106,6 +140,7 @@
                 highlights: pos > 0 ? { [pos - 1]: COLORS.active } : {},
                 newNode: { value: val, pos: pos, headTarget: false },
                 newArrow: 'none',
+                codeLine: 2,
                 description: `创建新结点 s，数据域置为 ${val}，此时它的指针域尚未指向任何结点`
             }));
 
@@ -114,6 +149,7 @@
                 highlights: pos > 0 ? { [pos - 1]: COLORS.active } : {},
                 newNode: { value: val, pos: pos, headTarget: false },
                 newArrow: 'toNext',
+                codeLine: 7,
                 description: `① 执行 s->next = p->next：新结点的指针域指向原第 ${pos} 个结点${pos < n ? `（值 ${list[pos]}）` : '（null，原表尾之后）'}`
             }));
 
@@ -126,6 +162,7 @@
                 arrowHighlights: ah2,
                 newNode: { value: val, pos: pos, headTarget: pos === 0 },
                 newArrow: 'both',
+                codeLine: 8,
                 description: pos > 0
                     ? `② 执行 p->next = s：前驱结点（值 ${list[pos - 1]}）的 next 改指新结点（红色指针为被修改的指针）。两句顺序不能颠倒，否则会丢失后继链！`
                     : `② 执行 head = s：head 指针改指新结点（表头插入）。两句顺序不能颠倒，否则会丢失后继链！`
@@ -136,6 +173,7 @@
             doneList.splice(pos, 0, val);
             steps.push(mkStep('insert', doneList, chainNext(doneList.length), {
                 highlights: { [pos]: COLORS.done },
+                codeLine: 9,
                 description: `插入完成！新链表长度 ${doneList.length}：[${doneList.join(', ')}]`
             }));
 
@@ -156,11 +194,13 @@
             const nx = chainNext(n);
 
             steps.push(mkStep('delete', list, nx, {
+                codeLine: 1,
                 description: `单链表删除：删除位置 ${pos} 的结点，当前长度 ${n}（先找到前驱，再修改指针摘除结点）`
             }));
 
             if (pos < 0 || pos >= n) {
                 steps.push(mkStep('delete', list, nx, {
+                    codeLine: 1,
                     description: `位置 ${pos} 非法！合法范围为 0 ~ ${n - 1}，删除取消`
                 }));
                 return steps;
@@ -174,6 +214,7 @@
                     highlights: { [i]: COLORS.active },
                     arrowHighlights: ah,
                     pointLabels: { [i]: { text: 'p', color: COLORS.active } },
+                    codeLine: 4,
                     description: `工作指针 p 移动到结点 ${i}（值 ${list[i]}）${i === pos - 1 ? '，这正是待删结点的前驱' : ''}`
                 }));
             }
@@ -185,6 +226,7 @@
             steps.push(mkStep('delete', list, nx, {
                 highlights: { [pos]: COLORS.modify },
                 pointLabels: qLabels,
+                codeLine: 5,
                 description: `定位待删结点 q（值 ${list[pos]}）${pos > 0 ? `，前驱 p（值 ${list[pos - 1]}）已就位` : '，待删结点就是首元结点，需修改 head 指针'}`
             }));
 
@@ -197,6 +239,7 @@
                 highlights: pos > 0 ? { [pos - 1]: COLORS.modify, [pos]: COLORS.modify } : { [pos]: COLORS.modify },
                 arrowHighlights: pos > 0 ? { [String(pos - 1)]: COLORS.modify } : { 'head': COLORS.modify },
                 pointLabels: pos > 0 ? { [pos - 1]: { text: 'p', color: COLORS.modify } } : {},
+                codeLine: 6,
                 description: pos > 0
                     ? `执行 p->next = q->next：结点 ${pos - 1}（值 ${list[pos - 1]}）的 next 越过 q，改指其后继${pos + 1 < n ? `（值 ${list[pos + 1]}）` : '（null）'}`
                     : `执行 head = head->next：head 指针改指第二个结点${n > 1 ? `（值 ${list[1]}）` : '（null，表变空）'}`
@@ -208,10 +251,12 @@
             rest.splice(pos, 1);
             steps.push(mkStep('delete', rest, chainNext(rest.length), {
                 deletedNode: { value: deletedVal, pos: pos },
+                codeLine: 7,
                 description: `结点 ${deletedVal} 已从链中摘除（free(q) 释放空间）`
             }));
 
             steps.push(mkStep('delete', rest, chainNext(rest.length), {
+                codeLine: 8,
                 description: `删除完成！链表长度 ${rest.length}：[${rest.join(', ')}]`
             }));
 
@@ -538,6 +583,9 @@
             }
         }
     };
+
+    // 供 vizView 汇总为右侧代码面板的片段库（key 与注册表一致）
+    ListViz.code = CODE;
 
     window.ListViz = ListViz;
 })();

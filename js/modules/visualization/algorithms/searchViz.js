@@ -14,6 +14,67 @@
         eliminated: '#e0e0e0'
     };
 
+    /* ── 右侧代码面板配套片段（与生成器步骤严格同构） ── */
+    const CODE = {
+        'linear-search': {
+            title: '顺序查找（逐个比较，找到即返回）',
+            lines: [
+                'int linearSearch(int arr[], int n, int key) {',
+                '  for (int i = 0; i < n; i++) {',
+                '    if (arr[i] == key)',
+                '      return i;',
+                '  }',
+                '  return -1;',
+                '}',
+            ],
+        },
+        'binary-search': {
+            title: '折半查找（有序表，每轮排除一半）',
+            lines: [
+                'int binarySearch(int arr[], int n, int key) {',
+                '  int low = 0, high = n - 1;',
+                '  while (low <= high) {',
+                '    int mid = (low + high) / 2;',
+                '    if (arr[mid] == key)',
+                '      return mid;',
+                '    else if (arr[mid] < key)',
+                '      low = mid + 1;',
+                '    else',
+                '      high = mid - 1;',
+                '  }',
+                '  return -1;',
+                '}',
+            ],
+        },
+        'kmp': {
+            title: 'KMP（先求 next，再无回溯匹配）',
+            lines: [
+                '// next[j]: P[0..j-1] 最长相等前后缀长度',
+                'void getNext(char P[], int m, int next[]) {',
+                '  next[0] = -1;',
+                '  for (int j = 1; j < m; j++) {',
+                '    int k = next[j - 1];',
+                '    while (k != -1 && P[k] != P[j - 1])',
+                '      k = next[k];',
+                '    next[j] = k + 1;',
+                '  }',
+                '}',
+                '',
+                'int kmp(char T[], char P[], int next[]) {',
+                '  int i = 0, j = 0;',
+                '  while (i < n && j < m) {',
+                '    if (j == -1 || T[i] == P[j]) {',
+                '      i++; j++;',
+                '    } else {',
+                '      j = next[j];',
+                '    }',
+                '  }',
+                '  return j >= m ? i - m : -1;',
+                '}',
+            ],
+        },
+    };
+
     const SearchViz = {
 
         /**
@@ -31,6 +92,7 @@
                 highlights: {},
                 range: { low: 0, high: data.length - 1 },
                 eliminated: [],
+                codeLine: 1,
                 description: `开始线性搜索：在数组中查找目标值 ${target}`
             });
 
@@ -49,6 +111,7 @@
                     highlights: highlights,
                     range: { low: i, high: i },
                     eliminated: Array.from({ length: i }, (_, idx) => idx),
+                    codeLine: 3,
                     description: `检查位置 ${i}: arr[${i}]=${data[i]}${data[i] === target ? '' : ` ≠ ${target}`}`
                 });
 
@@ -60,6 +123,7 @@
                         highlights: highlights,
                         range: { low: i, high: i },
                         eliminated: [],
+                        codeLine: 4,
                         description: `✓ 找到目标！${target} 在位置 ${i}，共比较了 ${i + 1} 次`
                     });
                     return steps;
@@ -77,6 +141,7 @@
                 highlights: finalHighlights,
                 range: null,
                 eliminated: Array.from({ length: data.length }, (_, idx) => idx),
+                codeLine: 6,
                 description: `✗ 未找到目标值 ${target}，已遍历全部 ${data.length} 个元素`
             });
 
@@ -101,6 +166,7 @@
                 highlights: {},
                 range: { low, high },
                 eliminated: [],
+                codeLine: 2,
                 description: `开始二分搜索：在有序数组中查找目标值 ${target}（数组长度 ${data.length}）`
             });
 
@@ -123,6 +189,7 @@
                     highlights: { ...rangeHighlights },
                     range: { low, high },
                     eliminated: eliminated.slice(),
+                    codeLine: 4,
                     description: `搜索范围 [${low}..${high}]，中间位置 mid=${mid}，arr[${mid}]=${data[mid]}`
                 });
 
@@ -139,6 +206,7 @@
                         highlights: foundHighlights,
                         range: { low: mid, high: mid },
                         eliminated: eliminated.slice(),
+                        codeLine: 6,
                         description: `✓ 找到目标！arr[${mid}]=${target}，共比较了 ${comparisons} 次`
                     });
                     return steps;
@@ -160,6 +228,7 @@
                         highlights: elimHighlights,
                         range: { low: mid + 1, high },
                         eliminated: eliminated.slice(),
+                        codeLine: 8,
                         description: `${data[mid]} < ${target}，目标在右半部分，排除 [${low}..${mid}]`
                     });
                     low = mid + 1;
@@ -181,6 +250,7 @@
                         highlights: elimHighlights,
                         range: { low, high: mid - 1 },
                         eliminated: eliminated.slice(),
+                        codeLine: 10,
                         description: `${data[mid]} > ${target}，目标在左半部分，排除 [${mid}..${high}]`
                     });
                     high = mid - 1;
@@ -198,6 +268,7 @@
                 highlights: finalHighlights,
                 range: null,
                 eliminated: Array.from({ length: data.length }, (_, idx) => idx),
+                codeLine: 12,
                 description: `✗ 未找到目标值 ${target}，共比较了 ${comparisons} 次，搜索范围为空`
             });
 
@@ -328,6 +399,7 @@
                 phase: 'build-next',
                 next: next.slice(),
                 nextComputed: 1,
+                codeLine: 3,
                 description: '第一步：计算 next 特征向量。按课件定义 next[0] = -1（j=0 时前面没有前缀可复用）'
             }));
 
@@ -340,6 +412,7 @@
                     j: j,
                     k: k,
                     compare: k >= 0 ? { p: k, pj: j - 1 } : null,
+                    codeLine: 5,
                     description: `求 next[${j}]：令 k = next[${j - 1}] = ${k}` +
                         (k >= 0 ? `，比较 P[${k}]='${P[k]}' 与 P[${j - 1}]='${P[j - 1]}'` : '（k = -1，无前缀可复用）')
                 }));
@@ -352,6 +425,7 @@
                         j: j,
                         k: k,
                         compare: k >= 0 ? { p: k, pj: j - 1 } : null,
+                        codeLine: 7,
                         description: `两者不等，利用已求出的 next 回退：k = next[旧k] = ${k}` +
                             (k >= 0 ? `，继续比较 P[${k}]='${P[k]}' 与 P[${j - 1}]='${P[j - 1]}'` : '，k = -1（已退到头）')
                     }));
@@ -365,6 +439,7 @@
                     k: k,
                     compare: k >= 0 ? { p: k, pj: j - 1 } : null,
                     result: 'compute-done',
+                    codeLine: 8,
                     description: (k >= 0 ? `P[${k}] = P[${j - 1}] = '${P[k]}'，前缀可复用，` : 'k = -1，从零开始，') +
                         `→ next[${j}] = k + 1 = ${next[j]}`
                 }));
@@ -375,6 +450,7 @@
                 next: next.slice(),
                 nextComputed: m,
                 result: 'compute-done',
+                codeLine: 10,
                 description: `next 特征向量计算完成：[${next.join(', ')}]——匹配失配时由它决定模式串右移位置，主串指针不回溯`
             }));
 
@@ -393,6 +469,7 @@
                         j: -1,
                         align: i + 1,
                         result: 'reset',
+                        codeLine: 15,
                         description: `j = -1（P[0] 已滑过 T[${i}]，无可复用前缀）：主串指针 i 进 1，模式串回到 P[0]，继续比较 T[${i + 1}] 与 P[0]`
                     }));
                     i++;
@@ -412,6 +489,7 @@
                         compare: { t: i, p: j },
                         result: 'match',
                         type: 'compare',
+                        codeLine: 16,
                         description: `T[${i}]='${T[i]}' = P[${j}]='${P[j]}' ✓ 匹配，两指针同时右移（已连续匹配 ${j + 1} 个字符）`
                     }));
                     i++;
@@ -429,6 +507,7 @@
                         compare: { t: i, p: j },
                         result: 'shift',
                         type: 'compare',
+                        codeLine: 18,
                         description: `T[${i}]='${T[i]}' ≠ P[${j}]='${P[j]}' ✗ 失配 → 查 next[${j}] = ${nj}，模式串右移` +
                             (nj >= 0
                                 ? `，改用 P[${nj}] 与 T[${i}] 继续比较（主串指针不回溯）`
@@ -447,6 +526,7 @@
                     j: j,
                     align: i - m,
                     result: 'found',
+                    codeLine: 21,
                     description: `✓ 匹配成功！模式串 "${P}" 出现在主串下标 ${i - m} 处（T[${i - m}..${i - 1}]），共比较 ${comparisons} 次。目标串指针无回溯，时间复杂度 O(lengthT)`
                 }));
             } else {
@@ -458,6 +538,7 @@
                     j: j,
                     align: Math.max(0, i - Math.max(j, 0)),
                     result: 'fail',
+                    codeLine: 21,
                     description: `✗ 匹配失败：主串中不存在模式串 "${P}"，共比较 ${comparisons} 次`
                 }));
             }
@@ -602,6 +683,9 @@
             }
         }
     };
+
+    // 供 vizView 汇总为右侧代码面板的片段库（key 与注册表一致）
+    SearchViz.code = CODE;
 
     window.SearchViz = SearchViz;
 })();

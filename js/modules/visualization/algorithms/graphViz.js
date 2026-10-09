@@ -15,6 +15,61 @@
         edgeActive: '#f5a623'
     };
 
+    /* ── 右侧代码面板配套片段（与生成器步骤严格同构） ── */
+    const CODE = {
+        'graph-bfs': {
+            title: 'BFS 广度优先搜索（队列驱动，逐层扩散）',
+            lines: [
+                'void BFS(Graph G, int v) {',
+                '  visit(v);',
+                '  visited[v] = true;',
+                '  EnQueue(Q, v);',
+                '  while (!QueueEmpty(Q)) {',
+                '    DeQueue(Q, u);',
+                '    for (u 的每个邻接点 w)',
+                '      if (!visited[w]) {',
+                '        visit(w);',
+                '        visited[w] = true;',
+                '        EnQueue(Q, w);',
+                '      }',
+                '  }',
+                '}',
+            ],
+        },
+        'graph-dfs': {
+            title: 'DFS 深度优先搜索（递归深入 + 回溯）',
+            lines: [
+                'void DFS(Graph G, int v) {',
+                '  visit(v);',
+                '  visited[v] = true;',
+                '  for (v 的每个邻接点 w)',
+                '    if (!visited[w]) {',
+                '      DFS(G, w);',
+                '    }',
+                '  // v 的邻居全部探索完，回溯',
+                '}',
+            ],
+        },
+        'graph-dijkstra': {
+            title: 'Dijkstra（贪心选点 + 松弛更新）',
+            lines: [
+                'void Dijkstra(Graph G, int v0) {',
+                '  dist[v0] = 0;',
+                '  for (int i = 0; i < n; i++) {',
+                '    u = 选取 dist 最小且未访问的顶点;',
+                '    visited[u] = true;',
+                '    for (u 的每个未访问邻接点 w) {',
+                '      if (dist[u] + w(u, w) < dist[w]) {',
+                '        dist[w] = dist[u] + w(u, w);',
+                '        prev[w] = u;',
+                '      }',
+                '    }',
+                '  }',
+                '}',
+            ],
+        },
+    };
+
     /**
      * Calculate circular layout positions for graph vertices
      */
@@ -72,6 +127,7 @@
                 vertexStates: {},
                 activeEdges: [],
                 queue: [],
+                codeLine: 1,
                 description: `开始广度优先搜索 (BFS)，起始节点: ${String.fromCharCode(65 + start)}`
             });
 
@@ -83,6 +139,7 @@
                 vertexStates: { [start]: COLORS.visiting },
                 activeEdges: [],
                 queue: [start],
+                codeLine: 4,
                 description: `将起始节点 ${String.fromCharCode(65 + start)} 加入队列`
             });
 
@@ -97,6 +154,7 @@
                     vertexStates: { ...vertexStates },
                     activeEdges: [],
                     queue: queue.slice(),
+                    codeLine: 6,
                     description: `出队节点 ${String.fromCharCode(65 + current)}，开始探索其邻居`
                 });
 
@@ -115,6 +173,7 @@
                             vertexStates: { ...nextStates },
                             activeEdges: [{ from: current, to: neighbor }],
                             queue: queue.slice(),
+                            codeLine: 11,
                             description: `发现未访问邻居 ${String.fromCharCode(65 + neighbor)}，加入队列`
                         });
                     }
@@ -128,6 +187,7 @@
                     vertexStates: { ...afterStates },
                     activeEdges: [],
                     queue: queue.slice(),
+                    codeLine: 13,
                     description: `节点 ${String.fromCharCode(65 + current)} 探索完毕，队列剩余: [${queue.map(v => String.fromCharCode(65 + v)).join(', ')}]`
                 });
             }
@@ -140,6 +200,7 @@
                 vertexStates: finalStates,
                 activeEdges: [],
                 queue: [],
+                codeLine: 14,
                 description: `BFS 完成！访问了 ${visited.size} 个节点`
             });
 
@@ -165,6 +226,7 @@
                 vertexStates: {},
                 activeEdges: [],
                 stack: [],
+                codeLine: 1,
                 description: `开始深度优先搜索 (DFS)，起始节点: ${String.fromCharCode(65 + start)}`
             });
 
@@ -181,6 +243,7 @@
                     vertexStates: { ...enterStates },
                     activeEdges: [],
                     stack: stack.slice(),
+                    codeLine: 3,
                     description: `访问节点 ${String.fromCharCode(65 + node)}，递归深入`
                 });
 
@@ -196,6 +259,7 @@
                             vertexStates: { ...exploreStates },
                             activeEdges: [{ from: node, to: neighbor }],
                             stack: stack.slice(),
+                            codeLine: 6,
                             description: `从 ${String.fromCharCode(65 + node)} 探索邻居 ${String.fromCharCode(65 + neighbor)}`
                         });
 
@@ -212,6 +276,7 @@
                     vertexStates: { ...afterStates },
                     activeEdges: [],
                     stack: stack.slice(),
+                    codeLine: 8,
                     description: `回溯：节点 ${String.fromCharCode(65 + node)} 的所有邻居已探索完毕`
                 });
             }
@@ -226,6 +291,7 @@
                 vertexStates: finalStates,
                 activeEdges: [],
                 stack: [],
+                codeLine: 9,
                 description: `DFS 完成！访问了 ${visited.size} 个节点`
             });
 
@@ -255,6 +321,7 @@
                 vertexStates: {},
                 activeEdges: [],
                 distances: dist.slice(),
+                codeLine: 1,
                 description: `开始 Dijkstra 最短路径算法，源节点: ${String.fromCharCode(65 + start)}`
             });
 
@@ -263,6 +330,7 @@
                 vertexStates: { [start]: COLORS.visiting },
                 activeEdges: [],
                 distances: dist.slice(),
+                codeLine: 2,
                 description: `初始化距离数组: dist[${String.fromCharCode(65 + start)}]=0，其余为 ∞`
             });
 
@@ -289,6 +357,7 @@
                     vertexStates: { ...states },
                     activeEdges: [],
                     distances: dist.slice(),
+                    codeLine: 4,
                     description: `选择未访问节点中距离最小的: ${String.fromCharCode(65 + u)} (距离=${dist[u]})`
                 });
 
@@ -304,6 +373,7 @@
                             vertexStates: { ...edgeStates },
                             activeEdges: [{ from: u, to: v }],
                             distances: dist.slice(),
+                            codeLine: 7,
                             description: `松弛边 ${String.fromCharCode(65 + u)}→${String.fromCharCode(65 + v)}：${fmt(dist[u])}+${adjMatrix[u][v]}=${fmt(newDist)} ${newDist < dist[v] ? '< ' + fmt(dist[v]) + '，更优，更新!' : '≥ ' + fmt(dist[v]) + '，不更新'}`
                         });
 
@@ -315,6 +385,7 @@
                                 vertexStates: { ...edgeStates },
                                 activeEdges: [{ from: u, to: v }],
                                 distances: dist.slice(),
+                                codeLine: 8,
                                 description: `更新 dist[${String.fromCharCode(65 + v)}] = ${newDist}，前驱节点: ${String.fromCharCode(65 + u)}`
                             });
                         }
@@ -331,6 +402,7 @@
                 vertexStates: finalStates,
                 activeEdges: [],
                 distances: dist.slice(),
+                codeLine: 13,
                 description: `Dijkstra 完成！最短距离: ${distStr}`
             });
 
@@ -393,14 +465,17 @@
             // Draw queue/stack info
             if (step.queue && step.queue.length > 0) {
                 const qText = '队列: [' + step.queue.map(v => String.fromCharCode(65 + v)).join(', ') + ']';
-                renderer.drawText(qText, renderer.width / 2, renderer.height - 20, '#555', 12);
+                renderer.drawText(qText, renderer.width / 2, renderer.height - 20, '#555', 20);
             }
             if (step.stack && step.stack.length > 0) {
                 const sText = '栈: [' + step.stack.map(v => String.fromCharCode(65 + v)).join(', ') + ']';
-                renderer.drawText(sText, renderer.width / 2, renderer.height - 20, '#555', 12);
+                renderer.drawText(sText, renderer.width / 2, renderer.height - 20, '#555', 20);
             }
         }
     };
+
+    // 供 vizView 汇总为右侧代码面板的片段库（key 与注册表一致）
+    GraphViz.code = CODE;
 
     window.GraphViz = GraphViz;
 })();

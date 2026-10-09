@@ -39,6 +39,11 @@
         _restoring: false,      // 状态恢复中标记（loadAlgorithm 跳过数据再生）
         _rawSteps: null,        // 原始步骤元数据（供 onStep 计数与状态恢复）
 
+        // 右侧代码面板：默认开启；随 dsa-viz-state 持久化
+        codeVisible: true,
+        _codeSpec: null,        // 当前算法的代码片段（{ title, lines }，无则面板退化为占位）
+        _codeLibrary: null,     // 各算法模块 code 片段表的汇总缓存
+
         // Algorithm registry
         algorithms: {
             // Sorting
@@ -194,6 +199,9 @@
 
             // 注入配色图例
             this._injectLegend();
+
+            // 注入右侧代码面板（画布 + 代码并排布局与显隐开关）
+            this._injectCodePanel();
 
             // 窗口尺寸变化 / 浏览器标签页切回时重绘画布：
             // canvas.width 赋值（renderer.resize）会清空画布，必须补一次当前步骤的绘制
@@ -508,6 +516,9 @@
             // Convert raw steps to animator steps
             this._buildAnimatorSteps(rawSteps);
 
+            // 加载该算法的配套代码片段（无则面板显示占位并不再高亮）
+            this._setupCodePanel(algoKey);
+
             // Update UI
             this._updateCounters();
             this._updateDescription(rawSteps.length > 0 ? rawSteps[0].description : '就绪');
@@ -549,6 +560,7 @@
 
                 this.animator.addStep(() => {
                     self.render(step);
+                    self._syncCodeHighlight(step);   // 画布与代码高亮同步（含 resize 重绘路径）
                 }, step.description);
             }
         },
@@ -606,6 +618,7 @@
                 listVal: this.currentListVal != null ? this.currentListVal : null,      // 链表插入值（随机参数）
                 seqVal: this.currentSeqVal != null ? this.currentSeqVal : null,         // 顺序表插入值（随机参数）
                 searchTarget: this.currentSearchTarget != null ? this.currentSearchTarget : null,  // 查找目标（随机参数）
+                showCode: this.codeVisible ? 1 : 0,                                    // 右侧代码面板开关
                 savedAt: Date.now(),
             };
         },
@@ -657,6 +670,11 @@
             this.currentListVal = saved.listVal != null ? saved.listVal : null;
             this.currentSeqVal = saved.seqVal != null ? saved.seqVal : null;
             this.currentSearchTarget = saved.searchTarget != null ? saved.searchTarget : null;
+
+            // 代码面板开关（旧版存档无该字段时默认开启）
+            this.codeVisible = saved.showCode !== 0;
+            const codeToggle = document.getElementById('viz-code-toggle');
+            if (codeToggle) codeToggle.checked = this.codeVisible;
 
             // 恢复的数据无效（如版本变更）时放弃恢复，走全新初始化
             if (this.currentData === null && ['string', 'sparse', 'ortho', 'queue', 'stackexpr', 'hanoi', 'topo', 'dp'].indexOf(this.currentCategory) === -1) {
@@ -1609,6 +1627,180 @@
                 legend.appendChild(item);
             }
             controls.appendChild(legend);
+        },
+
+        /* ---------------- 右侧代码面板（逐步高亮） ----------------
+         * 画布与代码并排：.viz-canvas-wrap 内动态注入一行 flex（.viz-main），
+         * 左侧 .viz-canvas-box 成为 canvas 的直接父级（renderer.resize 按其
+         * rect 伸缩，与面板宽度互不干扰），右侧为 #viz-code-panel。
+         * 代码片段来自各算法模块导出的 code 表（key 与注册表一致），
+         * 渲染复用教学模块的 CodeWalkthrough（.cw-* 全局样式），
+         * 每个步骤的 codeLine 字段驱动行高亮。
+         * 未提供片段的算法（结构演示类）面板显示占位，不影响画布。 */
+
+        /**
+         * 注入代码面板 DOM 与显隐开关（init 时调用一次，幂等）
+         * @private
+         */
+        _injectCodePanel() {
+            const wrap = document.querySelector('.viz-canvas-wrap');
+            const canvas = document.getElementById('viz-canvas');
+            if (!wrap || !canvas || document.getElementById('viz-code-panel')) return;
+
+            const main = document.createElement('div');
+            main.className = 'viz-main';
+            const box = document.createElement('div');
+            box.className = 'viz-canvas-box';
+            wrap.insertBefore(main, canvas);   // 占住 canvas 原位置
+            box.appendChild(canvas);           // canvas 移入画布盒（父级 = 盒，resize 依据不变）
+            main.appendChild(box);
+
+            const panel = document.createElement('aside');
+            panel.id = 'viz-code-panel';
+            panel.className = 'viz-code-panel';
+            panel.setAttribute('aria-label', '算法配套代码');
+            const head = document.createElement('div');
+            head.className = 'viz-code-head';
+            const title = document.createElement('span');
+            title.className = 'viz-code-title';
+            head.appendChild(title);
+            const body = document.createElement('div');
+            body.className = 'viz-code-body';
+            panel.appendChild(head);
+            panel.appendChild(body);
+            main.appendChild(panel);
+
+            // 控件区注入「显示代码」开关（与图例同为动态注入，不动 index.html）
+            const controls = document.getElementById('viz-controls');
+            if (controls) {
+                const toggle = document.createElement('label');
+                toggle.className = 'viz-code-toggle';
+                toggle.title = '在画布右侧显示配套代码，并随步骤高亮当前执行行';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = 'viz-code-toggle';
+                cb.checked = this.codeVisible;
+                const txt = document.createElement('span');
+                txt.textContent = '显示代码';
+                toggle.appendChild(cb);
+                toggle.appendChild(txt);
+                controls.appendChild(toggle);
+                cb.addEventListener('change', () => {
+                    this.codeVisible = cb.checked;
+                    this._applyCodePanelVisibility(true);   // 布局变化 → 补一次画布重绘
+                    this._saveVizState();
+                });
+            }
+            this._applyCodePanelVisibility(false);
+            // 画布刚被挪进 .viz-canvas-box，父级矩形已变，必须重新量取：
+            // renderer.init 时按旧父级（.viz-canvas-wrap，更宽且高含说明条）设置过
+            // 位图与内联尺寸——canvas 是替换元素，内联高即最小内容尺寸，flex 压不回，
+            // 不补 resize 内容会按旧尺寸作画并溢出卡片（清空数据后的全新初始化必现）
+            if (this.renderer && this.renderer.canvas) {
+                const rect = this.renderer.canvas.parentElement.getBoundingClientRect();
+                if (rect.width > 10 && rect.height > 10) {
+                    this.renderer.resize();
+                }
+            }
+        },
+
+        /**
+         * 汇总各算法模块的代码片段表（懒加载缓存）
+         * @private
+         */
+        _codeLibraryMap() {
+            if (!this._codeLibrary) {
+                this._codeLibrary = Object.assign({},
+                    (typeof SortViz !== 'undefined' && SortViz.code) || {},
+                    (typeof SearchViz !== 'undefined' && SearchViz.code) || {},
+                    (typeof GraphViz !== 'undefined' && GraphViz.code) || {},
+                    (typeof ListViz !== 'undefined' && ListViz.code) || {},
+                    (typeof CourseViz !== 'undefined' && CourseViz.code) || {});
+            }
+            return this._codeLibrary;
+        },
+
+        /**
+         * 按算法装载代码面板：有片段则渲染行号代码，无则退化为占位说明
+         * @private
+         */
+        _setupCodePanel(algoKey) {
+            const panel = document.getElementById('viz-code-panel');
+            if (!panel) return;
+            const spec = this._codeLibraryMap()[algoKey] || null;
+            this._codeSpec = spec && Array.isArray(spec.lines) && spec.lines.length ? spec : null;
+
+            const titleEl = panel.querySelector('.viz-code-title');
+            const body = panel.querySelector('.viz-code-body');
+            if (!this._codeSpec || typeof CodeWalkthrough === 'undefined') {
+                if (titleEl) titleEl.textContent = '';
+                if (body) {
+                    body.innerHTML = '<div class="viz-code-empty">该算法为结构演示类<br>暂无逐步代码走读</div>';
+                }
+                this._applyCodePanelVisibility(false);
+                return;
+            }
+            if (titleEl) titleEl.textContent = this._codeSpec.title || '';
+            if (body) {
+                body.innerHTML = CodeWalkthrough.create(this._codeSpec.lines.join('\n'));
+                if (body.firstElementChild) {
+                    CodeWalkthrough.bindEvents(body.firstElementChild);
+                }
+            }
+            this._applyCodePanelVisibility(false);
+        },
+
+        /**
+         * 应用面板显隐（visible 类）。
+         * @param {boolean} redraw - true 表示由开关触发，布局变化后需补画布重绘
+         * @private
+         */
+        _applyCodePanelVisibility(redraw) {
+            const panel = document.getElementById('viz-code-panel');
+            // 可见性变化会改变画布盒宽度（面板占位/让位），必须按新布局重画：
+            // 初始化序列是 注入(面板隐藏→盒占满行) → 装载代码(面板显示→盒变窄)，
+            // 若只在开关时重绘，刷新后首帧仍按注入时的宽度作画（内容钻到面板底下）
+            let layoutChanged = !!redraw;
+            if (panel) {
+                const was = panel.classList.contains('visible');
+                const now = !!this.codeVisible && !!this._codeSpec;
+                panel.classList.toggle('visible', now);
+                if (was !== now) layoutChanged = true;
+            }
+            if (layoutChanged) {
+                // 两帧 rAF 等布局生效后再重绘（_redrawCurrentStep 内部先 resize 再补画
+                // 当前步骤——resize 赋值 canvas.width 会清空画布，所以不能只 resize）
+                requestAnimationFrame(() => requestAnimationFrame(() => this._redrawCurrentStep()));
+            }
+        },
+
+        /**
+         * 步骤渲染后同步代码高亮行（无 codeLine 的步骤清除高亮；
+         * 行号越界时按无行号处理，不抛错）
+         * @private
+         */
+        _syncCodeHighlight(step) {
+            const panel = document.getElementById('viz-code-panel');
+            if (!panel || !panel.classList.contains('visible') || !this._codeSpec) return;
+            if (typeof CodeWalkthrough === 'undefined') return;
+            const body = panel.querySelector('.viz-code-body');
+            const container = body ? body.firstElementChild : null;
+            if (!body || !container) return;
+
+            const n = this._codeSpec.lines.length;
+            const raw = step && Number.isInteger(step.codeLine) ? step.codeLine : 0;
+            const line = (raw >= 1 && raw <= n) ? raw : 0;
+            CodeWalkthrough.setActiveLine(container, line || null);
+
+            // 高亮行滚入可视区（只滚面板自身，不带动页面滚动）
+            const active = container.querySelector('.cw-line.cw-active');
+            if (active) {
+                const bRect = body.getBoundingClientRect();
+                const aRect = active.getBoundingClientRect();
+                if (aRect.top < bRect.top + 8 || aRect.bottom > bRect.bottom - 8) {
+                    body.scrollTop += aRect.top - bRect.top - (body.clientHeight - aRect.height) / 2;
+                }
+            }
         }
     };
 
